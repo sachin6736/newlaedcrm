@@ -1,8 +1,12 @@
 import { useState } from "react";
- 
+import { useNavigate } from "react-router-dom";
+import { Activity, ShieldCheck, Users } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
 const API_URL = "http://localhost:5000/api/auth/login";
  
-function Login({ onLogin }) {
+function Login() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -34,7 +38,8 @@ function Login({ onLogin }) {
         throw new Error(result.message || "Unable to sign in");
       }
  
-      onLogin(result.token, result.data);
+       login(result.token, result.data);
+      navigate("/leads", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,20 +69,26 @@ function Login({ onLogin }) {
  
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Secure access" },
-                { label: "Real-time data" },
-                { label: "Team ready" },
-              ].map((item) => (
-                <div
-                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 backdrop-blur-sm"
-                  key={item.label}
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wider text-emerald-100">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-2xl font-bold">{item.value}</p>
-                </div>
-              ))}
+                 { label: "Secure access", icon: ShieldCheck },
+                { label: "Real-time data", icon: Activity },
+                { label: "Team ready", icon: Users },
+              ].map((item) => {
+                const Icon = item.icon;
+ 
+                return (
+                  <div
+                    className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 backdrop-blur-sm"
+                    key={item.label}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-emerald-50">
+                      <Icon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                    </div>
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-emerald-100">
+                      {item.label}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
  

@@ -1,0 +1,81 @@
+import { NavLink, useNavigate } from "react-router-dom";
+import { LayoutDashboard, LogOut, PlusCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
+ 
+const navItems = [
+  { to: "/leads", label: "All Leads", icon: LayoutDashboard },
+  { to: "/leads/create", label: "Create Lead", icon: PlusCircle },
+];
+ 
+function Layout({ children, title, subtitle }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+ 
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+ 
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="absolute inset-x-0 top-0 h-72 bg-linear-to-br from-emerald-600/30 via-emerald-700/10 to-transparent blur-3xl" />
+ 
+      <header className="relative z-10 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+              CRM Platform
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
+          </div>
+ 
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {user && (
+              <p className="text-sm font-medium text-slate-400">
+                Signed in as <span className="text-emerald-300">{user.name}</span>
+              </p>
+            )}
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-900"
+              type="button"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
+        </div>
+ 
+        <nav className="mx-auto max-w-7xl px-5 pb-4 sm:px-8">
+          <div className="flex flex-wrap gap-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+ 
+              return (
+                <NavLink
+                  className={({ isActive }) =>
+                    `inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
+                      isActive
+                        ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
+                        : "border border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:text-white"
+                    }`
+                  }
+                  key={item.to}
+                  to={item.to}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
+          </div>
+        </nav>
+      </header>
+ 
+      <main className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8">{children}</main>
+    </div>
+  );
+}
+ 
+export default Layout;
