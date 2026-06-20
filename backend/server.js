@@ -13,12 +13,30 @@ dotenv.config();
 console.log(process.env.MONGO_URI);
 
 const app = express();
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  ...(process.env.CORS_ORIGIN || "").split(",").map((origin) => origin.trim()),
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
 
 // Connect Database
 connectDB();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);

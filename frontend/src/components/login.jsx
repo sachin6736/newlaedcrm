@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
-const API_URL = "http://localhost:5000/api/auth/login";
+import { apiUrl } from "../config/api.js";
+
+const API_URL = apiUrl("/api/auth/login");
  
 function Login() {
   const { login } = useAuth();
