@@ -1,9 +1,37 @@
 ﻿import Lead from "../models/Lead.js";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export const getLeads = async (req, res) => {
   try {
-    const leads = await Lead.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: leads });
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.max(Number(req.query.limit) || DEFAULT_PAGE_SIZE, 1);
+    const skip = (page - 1) * limit;
+
+    const [leads, total, quoted, ordered] = await Promise.all([
+      Lead.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Lead.countDocuments(),
+      Lead.countDocuments({ disposition: "Quoted" }),
+      Lead.countDocuments({ disposition: "Ordered" }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: leads,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+        hasNextPage: skip + leads.length < total,
+        hasPreviousPage: page > 1,
+      },
+      stats: {
+        total,
+        quoted,
+        ordered,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

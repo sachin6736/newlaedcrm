@@ -1,45 +1,102 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ClipboardList, PlusCircle, ShoppingBag, Sparkles } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  PlusCircle,
+  ShoppingBag,
+  Sparkles,
+} from "lucide-react";
 import Layout from "./Layout.jsx";
 import { API_URL } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
- 
+
+const PAGE_SIZE = 10;
+
 function ShowLeads() {
   const { authHeaders, logout } = useAuth();
   const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
- 
-  const leadStats = useMemo(() => {
-    return {
-      total: leads.length,
-      ordered: leads.filter((lead) => lead.disposition === "Ordered").length,
-      quoted: leads.filter((lead) => lead.disposition === "Quoted").length,
-    };
-  }, [leads]);
- 
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const [leadStats, setLeadStats] = useState({
+    total: 0,
+    quoted: 0,
+    ordered: 0,
+  });
+
+  const pageSummary = useMemo(() => {
+    if (pagination.total === 0) {
+      return "No leads to show";
+    }
+
+    const firstLead = (pagination.page - 1) * pagination.limit + 1;
+    const lastLead = Math.min(pagination.page * pagination.limit, pagination.total);
+
+    return `Showing ${firstLead}-${lastLead} of ${pagination.total} leads`;
+  }, [pagination]);
+
   useEffect(() => {
     let isMounted = true;
- 
+
     const loadLeads = async () => {
       try {
-        const response = await fetch(API_URL, { headers: authHeaders() });
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+        });
+        const response = await fetch(`${API_URL}?${params.toString()}`, {
+          headers: authHeaders(),
+        });
         const result = await response.json();
- 
+
         if (response.status === 401) {
           logout();
           navigate("/login", { replace: true });
           return;
         }
- 
+
         if (!response.ok) {
           throw new Error(result.message || "Unable to load leads");
         }
- 
+
         if (isMounted) {
-          setLeads(result.data || []);
+          const returnedLeads = result.data || [];
+          const apiPagination = result.pagination;
+          const visibleLeads = apiPagination
+            ? returnedLeads
+            : returnedLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+          const total = apiPagination?.total ?? returnedLeads.length;
+
+          setLeads(visibleLeads);
+          setPagination(
+            apiPagination || {
+              page,
+              limit: PAGE_SIZE,
+              total,
+              totalPages: Math.ceil(total / PAGE_SIZE) || 1,
+              hasNextPage: page * PAGE_SIZE < total,
+              hasPreviousPage: page > 1,
+            }
+          );
+          setLeadStats(
+            result.stats || {
+              total,
+              quoted: returnedLeads.filter((lead) => lead.disposition === "Quoted").length,
+              ordered: returnedLeads.filter((lead) => lead.disposition === "Ordered").length,
+            }
+          );
+          setError("");
         }
       } catch (err) {
         if (isMounted) {
@@ -51,14 +108,24 @@ function ShowLeads() {
         }
       }
     };
- 
+
     loadLeads();
- 
+
     return () => {
       isMounted = false;
     };
-  }, [authHeaders, logout, navigate]);
- 
+  }, [authHeaders, logout, navigate, page]);
+
+  const goToPage = (nextPage) => {
+    if (nextPage < 1 || nextPage === page) {
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+    setPage(nextPage);
+  };
+
   return (
     <Layout
       title="Created Leads"
@@ -73,19 +140,19 @@ function ShowLeads() {
         <StatCard icon={Sparkles} label="Quoted" value={leadStats.quoted} />
         <StatCard icon={ShoppingBag} label="Ordered" value={leadStats.ordered} />
       </div>
- 
+
       {error && (
         <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
           {error}
         </div>
       )}
- 
+
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur">
         <div className="flex flex-col gap-4 border-b border-slate-800 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <h2 className="text-lg font-bold text-white">Lead directory</h2>
             <p className="mt-1 text-sm text-slate-400">
-              All captured enquiries in one organized view.
+              Recent leads first. Use Older to see the previous leads.
             </p>
           </div>
           <Link
@@ -96,7 +163,17 @@ function ShowLeads() {
             Create Lead
           </Link>
         </div>
- 
+
+        {!loading && leads.length > 0 && (
+          <PaginationControls
+            className="border-b border-slate-800 px-5 py-4 sm:px-6"
+            pageSummary={pageSummary}
+            pagination={pagination}
+            onNewer={() => goToPage(page - 1)}
+            onOlder={() => goToPage(page + 1)}
+          />
+        )}
+
         {loading ? (
           <div className="p-10 text-center text-slate-400">Loading leads...</div>
         ) : leads.length === 0 ? (
@@ -117,48 +194,88 @@ function ShowLeads() {
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800">
-              <thead className="bg-slate-900/90">
-                <tr>
-                  {["Lead", "Phone", "Address", "Disposition", "Notes"].map((heading) => (
-                    <th
-                      className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
-                      key={heading}
-                    >
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/80">
-                {leads.map((lead) => (
-                  <tr className="transition hover:bg-slate-800/40" key={lead._id}>
-                    <td className="px-5 py-4">
-                      <div className="font-semibold text-white">{lead.name}</div>
-                      <div className="mt-1 text-sm text-slate-400">{lead.email}</div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
-                    <td className="max-w-xs px-5 py-4 text-sm text-slate-300">{lead.address}</td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/20">
-                        {lead.disposition}
-                      </span>
-                    </td>
-                    <td className="max-w-xs px-5 py-4 text-sm text-slate-400">
-                      {lead.notes || "No notes"}
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-800">
+                <thead className="bg-slate-900/90">
+                  <tr>
+                    {["Lead", "Phone", "Address", "Disposition", "Notes"].map((heading) => (
+                      <th
+                        className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
+                        key={heading}
+                      >
+                        {heading}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {leads.map((lead) => (
+                    <tr className="transition hover:bg-slate-800/40" key={lead._id}>
+                      <td className="px-5 py-4">
+                        <div className="font-semibold text-white">{lead.name}</div>
+                        <div className="mt-1 text-sm text-slate-400">{lead.email}</div>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
+                      <td className="max-w-xs px-5 py-4 text-sm text-slate-300">{lead.address}</td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+                          {lead.disposition}
+                        </span>
+                      </td>
+                      <td className="max-w-xs px-5 py-4 text-sm text-slate-400">
+                        {lead.notes || "No notes"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <PaginationControls
+              className="border-t border-slate-800 px-5 py-4 sm:px-6"
+              pageSummary={pageSummary}
+              pagination={pagination}
+              onNewer={() => goToPage(page - 1)}
+              onOlder={() => goToPage(page + 1)}
+            />
+          </>
         )}
       </div>
     </Layout>
   );
 }
- 
+
+function PaginationControls({ className, pageSummary, pagination, onNewer, onOlder }) {
+  return (
+    <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}>
+      <p className="text-sm font-medium text-slate-400">{pageSummary}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45"
+          type="button"
+          onClick={onNewer}
+          disabled={!pagination.hasPreviousPage}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Newer
+        </button>
+        <span className="min-w-20 text-center text-sm font-semibold text-slate-400">
+          Page {pagination.page} of {pagination.totalPages}
+        </span>
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45"
+          type="button"
+          onClick={onOlder}
+          disabled={!pagination.hasNextPage}
+        >
+          Older
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 function StatCard({ icon: Icon, label, value }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10 backdrop-blur">
@@ -170,5 +287,7 @@ function StatCard({ icon: Icon, label, value }) {
     </div>
   );
 }
- 
+
 export default ShowLeads;
+
+

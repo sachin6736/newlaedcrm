@@ -1,5 +1,7 @@
-export const API_URL = "http://localhost:5000/api/leads";
- 
+﻿const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+export const API_URL = `${API_BASE_URL}/api/leads`;
+
 export const dispositions = [
   "Quoted",
   "No Response",
@@ -9,7 +11,7 @@ export const dispositions = [
   "Part not available",
   "Ordered",
 ];
- 
+
 export const initialLeadForm = {
   name: "",
   email: "",
