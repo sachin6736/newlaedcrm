@@ -1,4 +1,6 @@
-export const API_URL = "http://localhost:5000/api/leads";
+import { apiUrl } from "../config/api.js";
+
+export const API_URL = apiUrl("/api/leads");
  
 export const dispositions = [
   "Quoted",
