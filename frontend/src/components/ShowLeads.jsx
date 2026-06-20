@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Pencil,
   PlusCircle,
   ShoppingBag,
   Sparkles,
@@ -34,6 +35,10 @@ function ShowLeads() {
     quoted: 0,
     ordered: 0,
   });
+
+  const [editingLeadId, setEditingLeadId] = useState(null);
+  const [editNote, setEditNote] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const pageSummary = useMemo(() => {
     if (pagination.total === 0) {
@@ -116,11 +121,66 @@ function ShowLeads() {
     };
   }, [authHeaders, logout, navigate, page]);
 
+  const startEditingNote = (lead) => {
+    setEditingLeadId(lead._id);
+    setEditNote(lead.notes || "");
+    setError("");
+  };
+
+  const cancelEditingNote = () => {
+    setEditingLeadId(null);
+    setEditNote("");
+  };
+
+  const saveNote = async (leadId) => {
+    if (isUpdating) return;
+
+    setIsUpdating(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_URL}/${leadId}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ notes: editNote }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update note");
+      }
+
+      // Update the lead in local state
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === leadId ? { ...lead, notes: result.data.notes } : lead
+        )
+      );
+
+      cancelEditingNote();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const goToPage = (nextPage) => {
     if (nextPage < 1 || nextPage === page) {
       return;
     }
 
+    cancelEditingNote();
     setError("");
     setLoading(true);
     setPage(nextPage);
@@ -223,8 +283,55 @@ function ShowLeads() {
                           {lead.disposition}
                         </span>
                       </td>
-                      <td className="max-w-xs px-5 py-4 text-sm text-slate-400">
-                        {lead.notes || "No notes"}
+                      <td className="max-w-md px-5 py-4 text-sm text-slate-400">
+                        {editingLeadId === lead._id ? (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              className="min-h-[60px] w-full resize-y rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                              value={editNote}
+                              onChange={(e) => setEditNote(e.target.value)}
+                              placeholder="Add a note..."
+                              disabled={isUpdating}
+                              rows={2}
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => saveNote(lead._id)}
+                                disabled={isUpdating}
+                                className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {isUpdating ? "Saving..." : "Save"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEditingNote}
+                                disabled={isUpdating}
+                                className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2">
+                            <span
+                              className="block flex-1 break-words text-slate-300 line-clamp-2"
+                              title={lead.notes || undefined}
+                            >
+                              {lead.notes ? lead.notes : "No notes"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => startEditingNote(lead)}
+                              className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
+                              title="Edit note"
+                              aria-label="Edit note"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
