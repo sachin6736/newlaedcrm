@@ -10,13 +10,19 @@ export const dispositions = [
   "Price too high",
   "Part not available",
   "Ordered",
+  "Already ordered",
+  "Sale",
 ];
 
 export const initialLeadForm = {
   name: "",
   email: "",
   phone: "",
-  address: "",
+  zip: "",
+  partRequested: "",
+  make: "",
+  model: "",
+  year: "",
   disposition: "Quoted",
   notes: "",
 };

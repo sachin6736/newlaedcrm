@@ -126,12 +126,42 @@ function CreateLead() {
                 required
               />
               <Field
-                label="Address"
-                name="address"
-                value={form.address}
+                label="Zip"
+                name="zip"
+                value={form.zip}
                 onChange={handleChange}
-                placeholder="Street, city, state"
+                placeholder="12345"
                 required
+              />
+              <Field
+                label="Make"
+                name="make"
+                value={form.make}
+                onChange={handleChange}
+                placeholder="Toyota"
+                required
+              />
+              <Field
+                label="Model"
+                name="model"
+                value={form.model}
+                onChange={handleChange}
+                placeholder="Camry"
+                required
+              />
+              <Field
+                label="Year"
+                name="year"
+                value={form.year}
+                onChange={handleChange}
+                placeholder="2020"
+              />
+              <Field
+                label="Part requested"
+                name="partRequested"
+                value={form.partRequested}
+                onChange={handleChange}
+                placeholder="Engine, bumper, etc."
               />
  
               <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300 md:col-span-2">

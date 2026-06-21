@@ -39,13 +39,28 @@ export const getLeads = async (req, res) => {
 
 export const createLead = async (req, res) => {
   try {
-    const { name, email, phone, address, disposition = "Quoted", notes = "" } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      zip,
+      partRequested,
+      make,
+      model,
+      year,
+      disposition = "Quoted",
+      notes = "",
+    } = req.body;
 
     const lead = await Lead.create({
       name,
       email,
       phone,
-      address,
+      zip,
+      partRequested,
+      make,
+      model,
+      year,
       disposition,
       notes,
     });

@@ -18,9 +18,29 @@ const leadSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    address: {
+    zip: {
       type: String,
       required: true,
+      trim: true,
+    },
+    partRequested: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    make: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    model: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    year: {
+      type: String,
+      required: false,
       trim: true,
     },
     disposition: {
@@ -33,6 +53,8 @@ const leadSchema = new mongoose.Schema(
         "Price too high",
         "Part not available",
         "Ordered",
+        "Already ordered",
+        "Sale",
       ],
       default: "Quoted",
     },
