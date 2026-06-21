@@ -76,26 +76,29 @@ export const updateLead = async (req, res) => {
     const { id } = req.params;
     const { notes, disposition } = req.body;
 
-    const updates = {};
-    if (notes !== undefined) {
-      updates.notes = notes;
-    }
-    if (disposition !== undefined) {
-      updates.disposition = disposition;
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ success: false, message: "No valid fields to update" });
-    }
-
-    const lead = await Lead.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true,
-    });
+    const lead = await Lead.findById(id);
 
     if (!lead) {
       return res.status(404).json({ success: false, message: "Lead not found" });
     }
+
+    let hasUpdates = false;
+
+    if (notes !== undefined) {
+      lead.notes = notes;
+      hasUpdates = true;
+    }
+
+    if (disposition !== undefined) {
+      lead.disposition = disposition;
+      hasUpdates = true;
+    }
+
+    if (!hasUpdates) {
+      return res.status(400).json({ success: false, message: "No valid fields to update" });
+    }
+
+    await lead.save();
 
     res.status(200).json({ success: true, data: lead });
   } catch (error) {

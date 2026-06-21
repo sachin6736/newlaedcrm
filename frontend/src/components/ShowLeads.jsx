@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Layout from "./Layout.jsx";
-import { API_URL } from "../constants/leads.js";
+import { API_URL, dispositions } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const PAGE_SIZE = 10;
@@ -21,6 +21,7 @@ function ShowLeads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -39,6 +40,8 @@ function ShowLeads() {
   const [editingLeadId, setEditingLeadId] = useState(null);
   const [editNote, setEditNote] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updatingDispositionId, setUpdatingDispositionId] = useState(null);
+  const [pendingDispositionChange, setPendingDispositionChange] = useState(null);
 
   const pageSummary = useMemo(() => {
     if (pagination.total === 0) {
@@ -132,6 +135,109 @@ function ShowLeads() {
     setEditNote("");
   };
 
+  const requestDispositionChange = (lead, nextDisposition) => {
+    if (updatingDispositionId || nextDisposition === lead.disposition) {
+      return;
+    }
+
+    setPendingDispositionChange({
+      leadId: lead._id,
+      leadName: lead.name,
+      previousDisposition: lead.disposition,
+      nextDisposition,
+    });
+    setError("");
+  };
+
+  const cancelDispositionChange = () => {
+    setPendingDispositionChange(null);
+  };
+
+  const confirmDispositionChange = async () => {
+    if (!pendingDispositionChange || updatingDispositionId) {
+      return;
+    }
+
+    const saved = await updateDisposition(
+      pendingDispositionChange.leadId,
+      pendingDispositionChange.previousDisposition,
+      pendingDispositionChange.nextDisposition,
+      pendingDispositionChange.leadName
+    );
+
+    if (saved) {
+      setPendingDispositionChange(null);
+    }
+  };
+
+  const updateDisposition = async (
+    leadId,
+    previousDisposition,
+    nextDisposition,
+    leadName = "Lead"
+  ) => {
+    if (updatingDispositionId || previousDisposition === nextDisposition) {
+      return false;
+    }
+
+    setUpdatingDispositionId(leadId);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch(`${API_URL}/${leadId}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ disposition: nextDisposition }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return false;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update disposition");
+      }
+
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === leadId ? { ...lead, disposition: result.data.disposition } : lead
+        )
+      );
+
+      setLeadStats((prevStats) => {
+        const nextStats = { ...prevStats };
+
+        if (previousDisposition === "Quoted") {
+          nextStats.quoted = Math.max(nextStats.quoted - 1, 0);
+        }
+        if (previousDisposition === "Ordered") {
+          nextStats.ordered = Math.max(nextStats.ordered - 1, 0);
+        }
+        if (nextDisposition === "Quoted") {
+          nextStats.quoted += 1;
+        }
+        if (nextDisposition === "Ordered") {
+          nextStats.ordered += 1;
+        }
+
+        return nextStats;
+      });
+
+      setSuccess(`${leadName}'s status was saved to the database.`);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setUpdatingDispositionId(null);
+    }
+  };
+
   const saveNote = async (leadId) => {
     if (isUpdating) return;
 
@@ -181,6 +287,7 @@ function ShowLeads() {
     }
 
     cancelEditingNote();
+    cancelDispositionChange();
     setError("");
     setLoading(true);
     setPage(nextPage);
@@ -204,6 +311,12 @@ function ShowLeads() {
       {error && (
         <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300">
+          {success}
         </div>
       )}
 
@@ -285,9 +398,21 @@ function ShowLeads() {
                         {lead.partRequested || "—"}
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/20">
-                          {lead.disposition}
-                        </span>
+                        <select
+                          className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          value={lead.disposition}
+                          onChange={(event) => requestDispositionChange(lead, event.target.value)}
+                          disabled={
+                            updatingDispositionId === lead._id || Boolean(pendingDispositionChange)
+                          }
+                          aria-label={`Disposition for ${lead.name}`}
+                        >
+                          {dispositions.map((disposition) => (
+                            <option key={disposition} value={disposition}>
+                              {disposition}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="max-w-md px-5 py-4 text-sm text-slate-400">
                         {editingLeadId === lead._id ? (
@@ -355,6 +480,17 @@ function ShowLeads() {
           </>
         )}
       </div>
+
+      {pendingDispositionChange && (
+        <DispositionConfirmModal
+          leadName={pendingDispositionChange.leadName}
+          previousDisposition={pendingDispositionChange.previousDisposition}
+          nextDisposition={pendingDispositionChange.nextDisposition}
+          isSaving={updatingDispositionId === pendingDispositionChange.leadId}
+          onConfirm={confirmDispositionChange}
+          onCancel={cancelDispositionChange}
+        />
+      )}
     </Layout>
   );
 }
@@ -389,6 +525,53 @@ function PaginationControls({ className, pageSummary, pagination, onNewer, onOld
     </div>
   );
 }
+function DispositionConfirmModal({
+  leadName,
+  previousDisposition,
+  nextDisposition,
+  isSaving,
+  onConfirm,
+  onCancel,
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+      <div
+        className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/30"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="disposition-confirm-title"
+      >
+        <h3 className="text-lg font-bold text-white" id="disposition-confirm-title">
+          Change disposition?
+        </h3>
+        <p className="mt-3 text-sm text-slate-400">
+          Save the status change for <span className="font-semibold text-white">{leadName}</span>{" "}
+          from <span className="font-semibold text-emerald-300">{previousDisposition}</span> to{" "}
+          <span className="font-semibold text-emerald-300">{nextDisposition}</span> in the database?
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isSaving}
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? "Saving..." : "Confirm change"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, label, value }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10 backdrop-blur">
