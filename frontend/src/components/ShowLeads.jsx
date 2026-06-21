@@ -259,7 +259,7 @@ function ShowLeads() {
               <table className="min-w-full divide-y divide-slate-800">
                 <thead className="bg-slate-900/90">
                   <tr>
-                    {["Lead", "Phone", "Zip", "Vehicle", "Part", "Disposition", "Notes"].map((heading) => (
+                    {["Lead", "Phone", "Zip", "Make", "Model", "Year", "Part", "Disposition", "Notes"].map((heading) => (
                       <th
                         className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
                         key={heading}
@@ -278,9 +278,9 @@ function ShowLeads() {
                       </td>
                       <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
                       <td className="px-5 py-4 text-sm text-slate-300">{lead.zip || "—"}</td>
-                      <td className="px-5 py-4 text-sm text-slate-300">
-                        {[lead.year, lead.make, lead.model].filter(Boolean).join(" ") || "—"}
-                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-300">{lead.make || "—"}</td>
+                      <td className="px-5 py-4 text-sm text-slate-300">{lead.model || "—"}</td>
+                      <td className="px-5 py-4 text-sm text-slate-300">{lead.year || "—"}</td>
                       <td className="max-w-xs px-5 py-4 text-sm text-slate-300">
                         {lead.partRequested || "—"}
                       </td>
