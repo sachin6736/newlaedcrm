@@ -14,6 +14,9 @@ export const dispositions = [
   "Sale",
 ];
 
+export const ALL_DISPOSITIONS = "all";
+export const ALL_DATES = "all";
+
 export const initialLeadForm = {
   name: "",
   email: "",

@@ -1,19 +1,30 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  Calendar,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Filter,
   Pencil,
   PlusCircle,
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
 import Layout from "./Layout.jsx";
-import { API_URL, dispositions } from "../constants/leads.js";
+import { ALL_DATES, ALL_DISPOSITIONS, API_URL, dispositions } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const PAGE_SIZE = 10;
+
+function formatDisplayDate(dateKey) {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 function ShowLeads() {
   const { authHeaders, logout } = useAuth();
@@ -35,7 +46,11 @@ function ShowLeads() {
     total: 0,
     quoted: 0,
     ordered: 0,
+    availableDates: [],
   });
+  const [dateFilter, setDateFilter] = useState(ALL_DATES);
+  const [dispositionFilter, setDispositionFilter] = useState(ALL_DISPOSITIONS);
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   const [editingLeadId, setEditingLeadId] = useState(null);
   const [editNote, setEditNote] = useState("");
@@ -43,16 +58,30 @@ function ShowLeads() {
   const [updatingDispositionId, setUpdatingDispositionId] = useState(null);
   const [pendingDispositionChange, setPendingDispositionChange] = useState(null);
 
+  const hasActiveFilters = useMemo(() => {
+    return dateFilter !== ALL_DATES || dispositionFilter !== ALL_DISPOSITIONS;
+  }, [dateFilter, dispositionFilter]);
+
   const pageSummary = useMemo(() => {
     if (pagination.total === 0) {
-      return "No leads to show";
+      return hasActiveFilters ? "No leads match the selected filters" : "No leads to show";
     }
 
     const firstLead = (pagination.page - 1) * pagination.limit + 1;
     const lastLead = Math.min(pagination.page * pagination.limit, pagination.total);
+    const activeFilters = [];
 
-    return `Showing ${firstLead}-${lastLead} of ${pagination.total} leads`;
-  }, [pagination]);
+    if (dateFilter !== ALL_DATES) {
+      activeFilters.push(formatDisplayDate(dateFilter));
+    }
+    if (dispositionFilter !== ALL_DISPOSITIONS) {
+      activeFilters.push(dispositionFilter);
+    }
+
+    const filterLabel = activeFilters.length ? ` (${activeFilters.join(" · ")})` : "";
+
+    return `Showing ${firstLead}-${lastLead} of ${pagination.total} leads${filterLabel}`;
+  }, [pagination, dateFilter, dispositionFilter, hasActiveFilters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -63,6 +92,14 @@ function ShowLeads() {
           page: String(page),
           limit: String(PAGE_SIZE),
         });
+
+        if (dateFilter !== ALL_DATES) {
+          params.set("date", dateFilter);
+        }
+
+        if (dispositionFilter !== ALL_DISPOSITIONS) {
+          params.set("disposition", dispositionFilter);
+        }
         const response = await fetch(`${API_URL}?${params.toString()}`, {
           headers: authHeaders(),
         });
@@ -97,13 +134,17 @@ function ShowLeads() {
               hasPreviousPage: page > 1,
             }
           );
-          setLeadStats(
-            result.stats || {
-              total,
-              quoted: returnedLeads.filter((lead) => lead.disposition === "Quoted").length,
-              ordered: returnedLeads.filter((lead) => lead.disposition === "Ordered").length,
-            }
-          );
+          setLeadStats({
+            total: result.stats?.total ?? total,
+            quoted:
+              result.stats?.quoted ??
+              returnedLeads.filter((lead) => lead.disposition === "Quoted").length,
+            ordered:
+              result.stats?.ordered ??
+              returnedLeads.filter((lead) => lead.disposition === "Ordered").length,
+            availableDates:
+              result.stats?.availableDates ?? result.stats?.countsByDate ?? [],
+          });
           setError("");
         }
       } catch (err) {
@@ -122,7 +163,7 @@ function ShowLeads() {
     return () => {
       isMounted = false;
     };
-  }, [authHeaders, logout, navigate, page]);
+  }, [authHeaders, logout, navigate, page, dateFilter, dispositionFilter, refreshCounter]);
 
   const startEditingNote = (lead) => {
     setEditingLeadId(lead._id);
@@ -229,6 +270,7 @@ function ShowLeads() {
       });
 
       setSuccess(`${leadName}'s status was saved to the database.`);
+      setRefreshCounter((current) => current + 1);
       return true;
     } catch (err) {
       setError(err.message);
@@ -281,6 +323,29 @@ function ShowLeads() {
     }
   };
 
+  const applyFilters = (nextDate, nextDisposition) => {
+    cancelEditingNote();
+    cancelDispositionChange();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    setPage(1);
+    setDateFilter(nextDate);
+    setDispositionFilter(nextDisposition);
+  };
+
+  const handleDateFilterChange = (event) => {
+    applyFilters(event.target.value, dispositionFilter);
+  };
+
+  const handleDispositionFilterChange = (event) => {
+    applyFilters(dateFilter, event.target.value);
+  };
+
+  const handleClearFilters = () => {
+    applyFilters(ALL_DATES, ALL_DISPOSITIONS);
+  };
+
   const goToPage = (nextPage) => {
     if (nextPage < 1 || nextPage === page) {
       return;
@@ -301,7 +366,7 @@ function ShowLeads() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           icon={ClipboardList}
-          label="Total leads"
+          label={hasActiveFilters ? "Filtered leads" : "Total leads"}
           value={leadStats.total}
         />
         <StatCard icon={Sparkles} label="Quoted" value={leadStats.quoted} />
@@ -321,20 +386,73 @@ function ShowLeads() {
       )}
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur">
-        <div className="flex flex-col gap-4 border-b border-slate-800 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div>
-            <h2 className="text-lg font-bold text-white">Lead directory</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Recent leads first. Use Older to see the previous leads.
-            </p>
+        <div className="flex flex-col gap-4 border-b border-slate-800 px-5 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">Lead directory</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                All leads are shown with pagination by default. Use the filters below to narrow by
+                date or disposition.
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+              to="/leads/create"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Create Lead
+            </Link>
           </div>
-          <Link
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-            to="/leads/create"
-          >
-            <PlusCircle className="h-4 w-4" />
-            Create Lead
-          </Link>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+              <span className="inline-flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-emerald-300" />
+                Filter by date
+              </span>
+              <select
+                className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                value={dateFilter}
+                onChange={handleDateFilterChange}
+              >
+                <option value={ALL_DATES}>All dates</option>
+                {(leadStats.availableDates ?? []).map(({ date, count }) => (
+                  <option key={date} value={date}>
+                    {formatDisplayDate(date)} ({count} leads)
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+              <span className="inline-flex items-center gap-2">
+                <Filter className="h-4 w-4 text-emerald-300" />
+                Filter by disposition
+              </span>
+              <select
+                className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                value={dispositionFilter}
+                onChange={handleDispositionFilterChange}
+              >
+                <option value={ALL_DISPOSITIONS}>All dispositions</option>
+                {dispositions.map((disposition) => (
+                  <option key={disposition} value={disposition}>
+                    {disposition}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
+              type="button"
+              onClick={handleClearFilters}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
         {!loading && leads.length > 0 && (
@@ -354,17 +472,31 @@ function ShowLeads() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
               <ClipboardList className="h-7 w-7" />
             </div>
-            <h3 className="mt-5 text-xl font-bold text-white">No leads yet</h3>
+            <h3 className="mt-5 text-xl font-bold text-white">
+              {hasActiveFilters ? "No matching leads" : "No leads yet"}
+            </h3>
             <p className="mt-2 text-sm text-slate-400">
-              Create your first lead to start building your pipeline.
+              {hasActiveFilters
+                ? "No leads match the selected date or disposition. Try different filters."
+                : "Create your first lead to start building your pipeline."}
             </p>
-            <Link
-              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-              to="/leads/create"
-            >
-              <PlusCircle className="h-4 w-4" />
-              Create Lead
-            </Link>
+            {hasActiveFilters ? (
+              <button
+                className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
+                type="button"
+                onClick={handleClearFilters}
+              >
+                Clear filters
+              </button>
+            ) : (
+              <Link
+                className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                to="/leads/create"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Create Lead
+              </Link>
+            )}
           </div>
         ) : (
           <>
@@ -384,87 +516,20 @@ function ShowLeads() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
                   {leads.map((lead) => (
-                    <tr className="transition hover:bg-slate-800/40" key={lead._id}>
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-white">{lead.name}</div>
-                        <div className="mt-1 text-sm text-slate-400">{lead.email}</div>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
-                      <td className="px-5 py-4 text-sm text-slate-300">{lead.zip || "—"}</td>
-                      <td className="px-5 py-4 text-sm text-slate-300">{lead.make || "—"}</td>
-                      <td className="px-5 py-4 text-sm text-slate-300">{lead.model || "—"}</td>
-                      <td className="px-5 py-4 text-sm text-slate-300">{lead.year || "—"}</td>
-                      <td className="max-w-xs px-5 py-4 text-sm text-slate-300">
-                        {lead.partRequested || "—"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <select
-                          className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                          value={lead.disposition}
-                          onChange={(event) => requestDispositionChange(lead, event.target.value)}
-                          disabled={
-                            updatingDispositionId === lead._id || Boolean(pendingDispositionChange)
-                          }
-                          aria-label={`Disposition for ${lead.name}`}
-                        >
-                          {dispositions.map((disposition) => (
-                            <option key={disposition} value={disposition}>
-                              {disposition}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="max-w-md px-5 py-4 text-sm text-slate-400">
-                        {editingLeadId === lead._id ? (
-                          <div className="flex flex-col gap-2">
-                            <textarea
-                              className="min-h-[60px] w-full resize-y rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                              value={editNote}
-                              onChange={(e) => setEditNote(e.target.value)}
-                              placeholder="Add a note..."
-                              disabled={isUpdating}
-                              rows={2}
-                            />
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => saveNote(lead._id)}
-                                disabled={isUpdating}
-                                className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {isUpdating ? "Saving..." : "Save"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEditingNote}
-                                disabled={isUpdating}
-                                className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-start gap-2">
-                            <span
-                              className="block flex-1 break-words text-slate-300 line-clamp-2"
-                              title={lead.notes || undefined}
-                            >
-                              {lead.notes ? lead.notes : "No notes"}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => startEditingNote(lead)}
-                              className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
-                              title="Edit note"
-                              aria-label="Edit note"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                    <LeadTableRow
+                      key={lead._id}
+                      lead={lead}
+                      editingLeadId={editingLeadId}
+                      editNote={editNote}
+                      isUpdating={isUpdating}
+                      updatingDispositionId={updatingDispositionId}
+                      pendingDispositionChange={pendingDispositionChange}
+                      onEditNoteChange={setEditNote}
+                      onStartEditingNote={startEditingNote}
+                      onCancelEditingNote={cancelEditingNote}
+                      onSaveNote={saveNote}
+                      onRequestDispositionChange={requestDispositionChange}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -492,6 +557,102 @@ function ShowLeads() {
         />
       )}
     </Layout>
+  );
+}
+
+function LeadTableRow({
+  lead,
+  editingLeadId,
+  editNote,
+  isUpdating,
+  updatingDispositionId,
+  pendingDispositionChange,
+  onEditNoteChange,
+  onStartEditingNote,
+  onCancelEditingNote,
+  onSaveNote,
+  onRequestDispositionChange,
+}) {
+  return (
+    <tr className="transition hover:bg-slate-800/40">
+      <td className="px-5 py-4">
+        <div className="font-semibold text-white">{lead.name}</div>
+        <div className="mt-1 text-sm text-slate-400">{lead.email}</div>
+      </td>
+      <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
+      <td className="px-5 py-4 text-sm text-slate-300">{lead.zip || "—"}</td>
+      <td className="px-5 py-4 text-sm text-slate-300">{lead.make || "—"}</td>
+      <td className="px-5 py-4 text-sm text-slate-300">{lead.model || "—"}</td>
+      <td className="px-5 py-4 text-sm text-slate-300">{lead.year || "—"}</td>
+      <td className="max-w-xs px-5 py-4 text-sm text-slate-300">
+        {lead.partRequested || "—"}
+      </td>
+      <td className="px-5 py-4">
+        <select
+          className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          value={lead.disposition}
+          onChange={(event) => onRequestDispositionChange(lead, event.target.value)}
+          disabled={updatingDispositionId === lead._id || Boolean(pendingDispositionChange)}
+          aria-label={`Disposition for ${lead.name}`}
+        >
+          {dispositions.map((disposition) => (
+            <option key={disposition} value={disposition}>
+              {disposition}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="max-w-md px-5 py-4 text-sm text-slate-400">
+        {editingLeadId === lead._id ? (
+          <div className="flex flex-col gap-2">
+            <textarea
+              className="min-h-[60px] w-full resize-y rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              value={editNote}
+              onChange={(event) => onEditNoteChange(event.target.value)}
+              placeholder="Add a note..."
+              disabled={isUpdating}
+              rows={2}
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSaveNote(lead._id)}
+                disabled={isUpdating}
+                className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isUpdating ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={onCancelEditingNote}
+                disabled={isUpdating}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2">
+            <span
+              className="block flex-1 break-words text-slate-300 line-clamp-2"
+              title={lead.notes || undefined}
+            >
+              {lead.notes ? lead.notes : "No notes"}
+            </span>
+            <button
+              type="button"
+              onClick={() => onStartEditingNote(lead)}
+              className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
+              title="Edit note"
+              aria-label="Edit note"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
   );
 }
 
