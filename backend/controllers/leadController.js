@@ -2,20 +2,43 @@
 
 const DEFAULT_PAGE_SIZE = 10;
 
-const buildLeadFilter = ({ disposition, date } = {}) => {
+const buildDateExpression = ({ year, month, day } = {}) => {
+  const parts = [];
+
+  if (year && year !== "all") {
+    parts.push({ $eq: [{ $year: "$createdAt" }, Number(year)] });
+  }
+
+  if (month && month !== "all") {
+    parts.push({ $eq: [{ $month: "$createdAt" }, Number(month)] });
+  }
+
+  if (day && day !== "all") {
+    parts.push({ $eq: [{ $dayOfMonth: "$createdAt" }, Number(day)] });
+  }
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  return { $and: parts };
+};
+
+const buildLeadFilter = ({ disposition, year, month, day } = {}) => {
   const filter = {};
 
   if (disposition && disposition !== "all") {
     filter.disposition = disposition;
   }
 
-  if (date && date !== "all") {
-    filter.$expr = {
-      $eq: [
-        { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-        date,
-      ],
-    };
+  const dateExpression = buildDateExpression({ year, month, day });
+
+  if (dateExpression) {
+    filter.$expr = dateExpression;
   }
 
   return filter;
@@ -27,9 +50,11 @@ export const getLeads = async (req, res) => {
     const limit = Math.max(Number(req.query.limit) || DEFAULT_PAGE_SIZE, 1);
     const skip = (page - 1) * limit;
     const disposition = req.query.disposition || "all";
-    const date = req.query.date || "all";
-    const listFilter = buildLeadFilter({ disposition, date });
-    const dateOptionsFilter = buildLeadFilter({ disposition, date: "all" });
+    const year = req.query.year || "all";
+    const month = req.query.month || "all";
+    const day = req.query.day || "all";
+    const listFilter = buildLeadFilter({ disposition, year, month, day });
+    const dateOptionsFilter = buildLeadFilter({ disposition });
 
     const [leads, total, quoted, ordered, availableDates] = await Promise.all([
       Lead.find(listFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -72,7 +97,9 @@ export const getLeads = async (req, res) => {
       },
       filters: {
         disposition,
-        date,
+        year,
+        month,
+        day,
       },
     });
   } catch (error) {

@@ -12,18 +12,40 @@ import {
   Sparkles,
 } from "lucide-react";
 import Layout from "./Layout.jsx";
-import { ALL_DATES, ALL_DISPOSITIONS, API_URL, dispositions } from "../constants/leads.js";
+import {
+  ALL_DAYS,
+  ALL_DISPOSITIONS,
+  ALL_MONTHS,
+  ALL_YEARS,
+  API_URL,
+  DAYS,
+  MONTHS,
+  dispositions,
+  getYearOptions,
+} from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const PAGE_SIZE = 10;
 
-function formatDisplayDate(dateKey) {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+const YEAR_OPTIONS = getYearOptions();
+
+function formatDateFilterLabel(year, month, day) {
+  const parts = [];
+
+  if (month !== ALL_MONTHS) {
+    const monthLabel = MONTHS.find((entry) => entry.value === month)?.label ?? month;
+    parts.push(monthLabel);
+  }
+
+  if (day !== ALL_DAYS) {
+    parts.push(`Day ${day}`);
+  }
+
+  if (year !== ALL_YEARS) {
+    parts.push(year);
+  }
+
+  return parts.join(" ");
 }
 
 function ShowLeads() {
@@ -46,9 +68,10 @@ function ShowLeads() {
     total: 0,
     quoted: 0,
     ordered: 0,
-    availableDates: [],
   });
-  const [dateFilter, setDateFilter] = useState(ALL_DATES);
+  const [yearFilter, setYearFilter] = useState(ALL_YEARS);
+  const [monthFilter, setMonthFilter] = useState(ALL_MONTHS);
+  const [dayFilter, setDayFilter] = useState(ALL_DAYS);
   const [dispositionFilter, setDispositionFilter] = useState(ALL_DISPOSITIONS);
   const [refreshCounter, setRefreshCounter] = useState(0);
 
@@ -58,9 +81,13 @@ function ShowLeads() {
   const [updatingDispositionId, setUpdatingDispositionId] = useState(null);
   const [pendingDispositionChange, setPendingDispositionChange] = useState(null);
 
+  const hasActiveDateFilter = useMemo(() => {
+    return yearFilter !== ALL_YEARS || monthFilter !== ALL_MONTHS || dayFilter !== ALL_DAYS;
+  }, [yearFilter, monthFilter, dayFilter]);
+
   const hasActiveFilters = useMemo(() => {
-    return dateFilter !== ALL_DATES || dispositionFilter !== ALL_DISPOSITIONS;
-  }, [dateFilter, dispositionFilter]);
+    return hasActiveDateFilter || dispositionFilter !== ALL_DISPOSITIONS;
+  }, [hasActiveDateFilter, dispositionFilter]);
 
   const pageSummary = useMemo(() => {
     if (pagination.total === 0) {
@@ -71,8 +98,8 @@ function ShowLeads() {
     const lastLead = Math.min(pagination.page * pagination.limit, pagination.total);
     const activeFilters = [];
 
-    if (dateFilter !== ALL_DATES) {
-      activeFilters.push(formatDisplayDate(dateFilter));
+    if (hasActiveDateFilter) {
+      activeFilters.push(formatDateFilterLabel(yearFilter, monthFilter, dayFilter));
     }
     if (dispositionFilter !== ALL_DISPOSITIONS) {
       activeFilters.push(dispositionFilter);
@@ -81,7 +108,7 @@ function ShowLeads() {
     const filterLabel = activeFilters.length ? ` (${activeFilters.join(" · ")})` : "";
 
     return `Showing ${firstLead}-${lastLead} of ${pagination.total} leads${filterLabel}`;
-  }, [pagination, dateFilter, dispositionFilter, hasActiveFilters]);
+  }, [pagination, yearFilter, monthFilter, dayFilter, dispositionFilter, hasActiveFilters, hasActiveDateFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -93,8 +120,16 @@ function ShowLeads() {
           limit: String(PAGE_SIZE),
         });
 
-        if (dateFilter !== ALL_DATES) {
-          params.set("date", dateFilter);
+        if (yearFilter !== ALL_YEARS) {
+          params.set("year", yearFilter);
+        }
+
+        if (monthFilter !== ALL_MONTHS) {
+          params.set("month", monthFilter);
+        }
+
+        if (dayFilter !== ALL_DAYS) {
+          params.set("day", dayFilter);
         }
 
         if (dispositionFilter !== ALL_DISPOSITIONS) {
@@ -142,8 +177,6 @@ function ShowLeads() {
             ordered:
               result.stats?.ordered ??
               returnedLeads.filter((lead) => lead.disposition === "Ordered").length,
-            availableDates:
-              result.stats?.availableDates ?? result.stats?.countsByDate ?? [],
           });
           setError("");
         }
@@ -163,7 +196,7 @@ function ShowLeads() {
     return () => {
       isMounted = false;
     };
-  }, [authHeaders, logout, navigate, page, dateFilter, dispositionFilter, refreshCounter]);
+  }, [authHeaders, logout, navigate, page, yearFilter, monthFilter, dayFilter, dispositionFilter, refreshCounter]);
 
   const startEditingNote = (lead) => {
     setEditingLeadId(lead._id);
@@ -323,27 +356,47 @@ function ShowLeads() {
     }
   };
 
-  const applyFilters = (nextDate, nextDisposition) => {
+  const applyFilters = ({
+    year = yearFilter,
+    month = monthFilter,
+    day = dayFilter,
+    disposition = dispositionFilter,
+  } = {}) => {
     cancelEditingNote();
     cancelDispositionChange();
     setError("");
     setSuccess("");
     setLoading(true);
     setPage(1);
-    setDateFilter(nextDate);
-    setDispositionFilter(nextDisposition);
+    setYearFilter(year);
+    setMonthFilter(month);
+    setDayFilter(day);
+    setDispositionFilter(disposition);
   };
 
-  const handleDateFilterChange = (event) => {
-    applyFilters(event.target.value, dispositionFilter);
+  const handleYearFilterChange = (event) => {
+    applyFilters({ year: event.target.value });
+  };
+
+  const handleMonthFilterChange = (event) => {
+    applyFilters({ month: event.target.value });
+  };
+
+  const handleDayFilterChange = (event) => {
+    applyFilters({ day: event.target.value });
   };
 
   const handleDispositionFilterChange = (event) => {
-    applyFilters(dateFilter, event.target.value);
+    applyFilters({ disposition: event.target.value });
   };
 
   const handleClearFilters = () => {
-    applyFilters(ALL_DATES, ALL_DISPOSITIONS);
+    applyFilters({
+      year: ALL_YEARS,
+      month: ALL_MONTHS,
+      day: ALL_DAYS,
+      disposition: ALL_DISPOSITIONS,
+    });
   };
 
   const goToPage = (nextPage) => {
@@ -391,8 +444,8 @@ function ShowLeads() {
             <div>
               <h2 className="text-lg font-bold text-white">Lead directory</h2>
               <p className="mt-1 text-sm text-slate-400">
-                All leads are shown with pagination by default. Use the filters below to narrow by
-                date or disposition.
+                All leads are shown with pagination by default. Pick a year, month, and/or day, or
+                filter by disposition.
               </p>
             </div>
             <Link
@@ -404,27 +457,64 @@ function ShowLeads() {
             </Link>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
-              <span className="inline-flex items-center gap-2">
+          <div className="space-y-4">
+            <div>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300">
                 <Calendar className="h-4 w-4 text-emerald-300" />
                 Filter by date
               </span>
-              <select
-                className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
-                value={dateFilter}
-                onChange={handleDateFilterChange}
-              >
-                <option value={ALL_DATES}>All dates</option>
-                {(leadStats.availableDates ?? []).map(({ date, count }) => (
-                  <option key={date} value={date}>
-                    {formatDisplayDate(date)} ({count} leads)
-                  </option>
-                ))}
-              </select>
-            </label>
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+                  Year
+                  <select
+                    className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    value={yearFilter}
+                    onChange={handleYearFilterChange}
+                  >
+                    <option value={ALL_YEARS}>All years</option>
+                    {YEAR_OPTIONS.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+                <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+                  Month
+                  <select
+                    className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    value={monthFilter}
+                    onChange={handleMonthFilterChange}
+                  >
+                    <option value={ALL_MONTHS}>All months</option>
+                    {MONTHS.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+                  Day
+                  <select
+                    className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    value={dayFilter}
+                    onChange={handleDayFilterChange}
+                  >
+                    <option value={ALL_DAYS}>All days</option>
+                    {DAYS.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <label className="flex max-w-md flex-col gap-2 text-sm font-semibold text-slate-300">
               <span className="inline-flex items-center gap-2">
                 <Filter className="h-4 w-4 text-emerald-300" />
                 Filter by disposition
