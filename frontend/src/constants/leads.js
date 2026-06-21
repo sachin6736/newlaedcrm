@@ -41,6 +41,9 @@ export const getYearOptions = () => {
 
 export const DAYS = Array.from({ length: 31 }, (_, index) => String(index + 1));
 
+export const SEARCH_PLACEHOLDER =
+  "Search by name, email, phone, make, model, year, or part";
+
 export const initialLeadForm = {
   name: "",
   email: "",

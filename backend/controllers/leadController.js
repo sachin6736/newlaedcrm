@@ -28,20 +28,52 @@ const buildDateExpression = ({ year, month, day } = {}) => {
   return { $and: parts };
 };
 
-const buildLeadFilter = ({ disposition, year, month, day } = {}) => {
-  const filter = {};
+const SEARCH_FIELDS = ["name", "email", "phone", "make", "model", "year", "partRequested"];
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildSearchFilter = (search) => {
+  const term = search?.trim();
+
+  if (!term) {
+    return null;
+  }
+
+  const regex = new RegExp(escapeRegex(term), "i");
+
+  return {
+    $or: SEARCH_FIELDS.map((field) => ({ [field]: regex })),
+  };
+};
+
+const buildLeadFilter = ({ disposition, year, month, day, search } = {}) => {
+  const conditions = [];
 
   if (disposition && disposition !== "all") {
-    filter.disposition = disposition;
+    conditions.push({ disposition });
   }
 
   const dateExpression = buildDateExpression({ year, month, day });
 
   if (dateExpression) {
-    filter.$expr = dateExpression;
+    conditions.push({ $expr: dateExpression });
   }
 
-  return filter;
+  const searchFilter = buildSearchFilter(search);
+
+  if (searchFilter) {
+    conditions.push(searchFilter);
+  }
+
+  if (conditions.length === 0) {
+    return {};
+  }
+
+  if (conditions.length === 1) {
+    return conditions[0];
+  }
+
+  return { $and: conditions };
 };
 
 export const getLeads = async (req, res) => {
@@ -53,8 +85,9 @@ export const getLeads = async (req, res) => {
     const year = req.query.year || "all";
     const month = req.query.month || "all";
     const day = req.query.day || "all";
-    const listFilter = buildLeadFilter({ disposition, year, month, day });
-    const dateOptionsFilter = buildLeadFilter({ disposition });
+    const search = req.query.search?.trim() || "";
+    const listFilter = buildLeadFilter({ disposition, year, month, day, search });
+    const dateOptionsFilter = buildLeadFilter({ disposition, search });
 
     const [leads, total, quoted, ordered, availableDates] = await Promise.all([
       Lead.find(listFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -100,6 +133,7 @@ export const getLeads = async (req, res) => {
         year,
         month,
         day,
+        search,
       },
     });
   } catch (error) {

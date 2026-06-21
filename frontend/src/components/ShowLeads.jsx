@@ -8,6 +8,7 @@ import {
   Filter,
   Pencil,
   PlusCircle,
+  Search,
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   MONTHS,
   dispositions,
   getYearOptions,
+  SEARCH_PLACEHOLDER,
 } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -73,6 +75,8 @@ function ShowLeads() {
   const [monthFilter, setMonthFilter] = useState(ALL_MONTHS);
   const [dayFilter, setDayFilter] = useState(ALL_DAYS);
   const [dispositionFilter, setDispositionFilter] = useState(ALL_DISPOSITIONS);
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [refreshCounter, setRefreshCounter] = useState(0);
 
   const [editingLeadId, setEditingLeadId] = useState(null);
@@ -86,8 +90,12 @@ function ShowLeads() {
   }, [yearFilter, monthFilter, dayFilter]);
 
   const hasActiveFilters = useMemo(() => {
-    return hasActiveDateFilter || dispositionFilter !== ALL_DISPOSITIONS;
-  }, [hasActiveDateFilter, dispositionFilter]);
+    return (
+      hasActiveDateFilter ||
+      dispositionFilter !== ALL_DISPOSITIONS ||
+      Boolean(appliedSearch)
+    );
+  }, [hasActiveDateFilter, dispositionFilter, appliedSearch]);
 
   const pageSummary = useMemo(() => {
     if (pagination.total === 0) {
@@ -104,11 +112,14 @@ function ShowLeads() {
     if (dispositionFilter !== ALL_DISPOSITIONS) {
       activeFilters.push(dispositionFilter);
     }
+    if (appliedSearch) {
+      activeFilters.push(`"${appliedSearch}"`);
+    }
 
     const filterLabel = activeFilters.length ? ` (${activeFilters.join(" · ")})` : "";
 
     return `Showing ${firstLead}-${lastLead} of ${pagination.total} leads${filterLabel}`;
-  }, [pagination, yearFilter, monthFilter, dayFilter, dispositionFilter, hasActiveFilters, hasActiveDateFilter]);
+  }, [pagination, yearFilter, monthFilter, dayFilter, dispositionFilter, appliedSearch, hasActiveFilters, hasActiveDateFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,6 +146,11 @@ function ShowLeads() {
         if (dispositionFilter !== ALL_DISPOSITIONS) {
           params.set("disposition", dispositionFilter);
         }
+
+        if (appliedSearch) {
+          params.set("search", appliedSearch);
+        }
+
         const response = await fetch(`${API_URL}?${params.toString()}`, {
           headers: authHeaders(),
         });
@@ -196,7 +212,7 @@ function ShowLeads() {
     return () => {
       isMounted = false;
     };
-  }, [authHeaders, logout, navigate, page, yearFilter, monthFilter, dayFilter, dispositionFilter, refreshCounter]);
+  }, [authHeaders, logout, navigate, page, yearFilter, monthFilter, dayFilter, dispositionFilter, appliedSearch, refreshCounter]);
 
   const startEditingNote = (lead) => {
     setEditingLeadId(lead._id);
@@ -390,7 +406,20 @@ function ShowLeads() {
     applyFilters({ disposition: event.target.value });
   };
 
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    cancelEditingNote();
+    cancelDispositionChange();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    setPage(1);
+    setAppliedSearch(searchInput.trim());
+  };
+
   const handleClearFilters = () => {
+    setSearchInput("");
+    setAppliedSearch("");
     applyFilters({
       year: ALL_YEARS,
       month: ALL_MONTHS,
@@ -444,8 +473,8 @@ function ShowLeads() {
             <div>
               <h2 className="text-lg font-bold text-white">Lead directory</h2>
               <p className="mt-1 text-sm text-slate-400">
-                All leads are shown with pagination by default. Pick a year, month, and/or day, or
-                filter by disposition.
+                All leads are shown with pagination by default. Search, filter by date, or filter by
+                disposition.
               </p>
             </div>
             <Link
@@ -458,6 +487,34 @@ function ShowLeads() {
           </div>
 
           <div className="space-y-4">
+            <form className="space-y-2" onSubmit={handleSearchSubmit}>
+              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+                <span className="inline-flex items-center gap-2">
+                  <Search className="h-4 w-4 text-emerald-300" />
+                  Search leads
+                </span>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    className="h-11 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+                    type="search"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder={SEARCH_PLACEHOLDER}
+                  />
+                  <button
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                    type="submit"
+                  >
+                    <Search className="h-4 w-4" />
+                    Search
+                  </button>
+                </div>
+              </label>
+              <p className="text-xs text-slate-500">
+                Matches name, email, phone, make, model, year, and part requested.
+              </p>
+            </form>
+
             <div>
               <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300">
                 <Calendar className="h-4 w-4 text-emerald-300" />
@@ -567,7 +624,7 @@ function ShowLeads() {
             </h3>
             <p className="mt-2 text-sm text-slate-400">
               {hasActiveFilters
-                ? "No leads match the selected date or disposition. Try different filters."
+                ? "No leads match your search or filters. Try different keywords or filters."
                 : "Create your first lead to start building your pipeline."}
             </p>
             {hasActiveFilters ? (
