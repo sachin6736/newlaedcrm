@@ -399,7 +399,7 @@ function ShowLeads() {
                       </td>
                       <td className="px-5 py-4">
                         <select
-                          className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-cyan-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                           value={lead.disposition}
                           onChange={(event) => requestDispositionChange(lead, event.target.value)}
                           disabled={
