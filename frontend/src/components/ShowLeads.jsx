@@ -2,15 +2,20 @@
 import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ClipboardList,
   Filter,
   Pencil,
   PlusCircle,
   Search,
   ShoppingBag,
+  SlidersHorizontal,
   Sparkles,
+  StickyNote,
+  X,
 } from "lucide-react";
 import Layout from "./Layout.jsx";
 import {
@@ -28,8 +33,21 @@ import {
 import { useAuth } from "../context/AuthContext.jsx";
 
 const PAGE_SIZE = 10;
+const NOTE_PREVIEW_LENGTH = 15;
 
 const YEAR_OPTIONS = getYearOptions();
+
+function truncateNote(note, maxLength = NOTE_PREVIEW_LENGTH) {
+  if (!note) {
+    return "";
+  }
+
+  return note.length > maxLength ? note.slice(0, maxLength) : note;
+}
+
+function isNoteTruncated(note, maxLength = NOTE_PREVIEW_LENGTH) {
+  return Boolean(note && note.length > maxLength);
+}
 
 function formatDateFilterLabel(year, month, day) {
   const parts = [];
@@ -84,6 +102,8 @@ function ShowLeads() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updatingDispositionId, setUpdatingDispositionId] = useState(null);
   const [pendingDispositionChange, setPendingDispositionChange] = useState(null);
+  const [viewingNote, setViewingNote] = useState(null);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   const hasActiveDateFilter = useMemo(() => {
     return yearFilter !== ALL_YEARS || monthFilter !== ALL_MONTHS || dayFilter !== ALL_DAYS;
@@ -223,6 +243,22 @@ function ShowLeads() {
   const cancelEditingNote = () => {
     setEditingLeadId(null);
     setEditNote("");
+  };
+
+  const openNoteViewer = (lead) => {
+    if (!isNoteTruncated(lead.notes)) {
+      return;
+    }
+
+    setViewingNote({
+      leadId: lead._id,
+      leadName: lead.name,
+      notes: lead.notes,
+    });
+  };
+
+  const closeNoteViewer = () => {
+    setViewingNote(null);
   };
 
   const requestDispositionChange = (lead, nextDisposition) => {
@@ -445,7 +481,7 @@ function ShowLeads() {
       title="Created Leads"
       subtitle="Review customer enquiries, track dispositions, and manage your sales pipeline."
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           icon={ClipboardList}
           label={hasActiveFilters ? "Filtered leads" : "Total leads"}
@@ -468,25 +504,68 @@ function ShowLeads() {
       )}
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur">
-        <div className="flex flex-col gap-4 border-b border-slate-800 px-5 py-5 sm:px-6">
+        <div className="border-b border-slate-800 px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">Lead directory</h2>
               <p className="mt-1 text-sm text-slate-400">
-                All leads are shown with pagination by default. Search, filter by date, or filter by
-                disposition.
+                Leads are listed below. Open search and filters only when you need to narrow results.
               </p>
             </div>
-            <Link
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-              to="/leads/create"
-            >
-              <PlusCircle className="h-4 w-4" />
-              Create Lead
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setFiltersExpanded((current) => !current)}
+                aria-expanded={filtersExpanded}
+                aria-controls="lead-filters-panel"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-4 text-sm font-semibold text-slate-300 transition hover:border-emerald-500/40 hover:bg-slate-800 hover:text-white"
+              >
+                <SlidersHorizontal className="h-4 w-4 text-emerald-300" />
+                Search & filters
+                {hasActiveFilters && (
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-300">
+                    Active
+                  </span>
+                )}
+                {filtersExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </button>
+              <Link
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                to="/leads/create"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Create Lead
+              </Link>
+            </div>
           </div>
 
-          <div className="space-y-4">
+          {!filtersExpanded && hasActiveFilters && (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-300">
+                <span className="font-semibold text-emerald-300">Filters applied.</span>{" "}
+                {pageSummary}
+              </p>
+              <button
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 px-4 text-xs font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
+                type="button"
+                onClick={handleClearFilters}
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+
+          <div
+            className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+              filtersExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            }`}
+          >
+            <div className="overflow-hidden" id="lead-filters-panel">
+              <div className="space-y-4 pt-4">
             <form className="space-y-2" onSubmit={handleSearchSubmit}>
               <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
                 <span className="inline-flex items-center gap-2">
@@ -589,17 +668,19 @@ function ShowLeads() {
                 ))}
               </select>
             </label>
-          </div>
 
-          {hasActiveFilters && (
-            <button
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
-              type="button"
-              onClick={handleClearFilters}
-            >
-              Clear filters
-            </button>
-          )}
+                {hasActiveFilters && (
+                  <button
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
+                    type="button"
+                    onClick={handleClearFilters}
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {!loading && leads.length > 0 && (
@@ -676,6 +757,7 @@ function ShowLeads() {
                       onCancelEditingNote={cancelEditingNote}
                       onSaveNote={saveNote}
                       onRequestDispositionChange={requestDispositionChange}
+                      onViewNote={openNoteViewer}
                     />
                   ))}
                 </tbody>
@@ -703,6 +785,14 @@ function ShowLeads() {
           onCancel={cancelDispositionChange}
         />
       )}
+
+      {viewingNote && (
+        <NotesViewModal
+          leadName={viewingNote.leadName}
+          notes={viewingNote.notes}
+          onClose={closeNoteViewer}
+        />
+      )}
     </Layout>
   );
 }
@@ -719,6 +809,7 @@ function LeadTableRow({
   onCancelEditingNote,
   onSaveNote,
   onRequestDispositionChange,
+  onViewNote,
 }) {
   return (
     <tr className="transition hover:bg-slate-800/40">
@@ -749,9 +840,9 @@ function LeadTableRow({
           ))}
         </select>
       </td>
-      <td className="max-w-md px-5 py-4 text-sm text-slate-400">
+      <td className="w-36 max-w-[9rem] px-5 py-4 text-sm text-slate-400">
         {editingLeadId === lead._id ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-[12rem] flex-col gap-2">
             <textarea
               className="min-h-[60px] w-full resize-y rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               value={editNote}
@@ -781,12 +872,30 @@ function LeadTableRow({
           </div>
         ) : (
           <div className="flex items-start gap-2">
-            <span
-              className="block flex-1 break-words text-slate-300 line-clamp-2"
-              title={lead.notes || undefined}
-            >
-              {lead.notes ? lead.notes : "No notes"}
-            </span>
+            <div className="min-w-0 flex-1">
+              {lead.notes ? (
+                isNoteTruncated(lead.notes) ? (
+                  <button
+                    type="button"
+                    onClick={() => onViewNote(lead)}
+                    className="group w-full text-left"
+                    aria-label={`View full note for ${lead.name}`}
+                  >
+                    <span className="block truncate font-medium text-slate-300">
+                      {truncateNote(lead.notes)}
+                      <span className="text-emerald-400">…</span>
+                    </span>
+                    <span className="mt-1 block text-xs font-semibold text-emerald-400/80 transition group-hover:text-emerald-300">
+                      View full note
+                    </span>
+                  </button>
+                ) : (
+                  <span className="block truncate text-slate-300">{lead.notes}</span>
+                )
+              ) : (
+                <span className="block text-slate-500">No notes</span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => onStartEditingNote(lead)}
@@ -833,6 +942,75 @@ function PaginationControls({ className, pageSummary, pagination, onNewer, onOld
     </div>
   );
 }
+function NotesViewModal({ leadName, notes, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/30"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notes-view-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-6 py-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                <StickyNote className="h-4 w-4" />
+              </div>
+              <h3 className="text-lg font-bold text-white" id="notes-view-title">
+                Lead notes
+              </h3>
+            </div>
+            <p className="mt-2 truncate text-sm text-slate-400">{leadName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+            aria-label="Close notes"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-6 py-5">
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-300">
+            {notes}
+          </p>
+        </div>
+
+        <div className="flex justify-end border-t border-slate-800 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DispositionConfirmModal({
   leadName,
   previousDisposition,
@@ -882,12 +1060,16 @@ function DispositionConfirmModal({
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10 backdrop-blur">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
-        <Icon className="h-5 w-5" strokeWidth={2} />
+    <div className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+          <Icon className="h-4 w-4" strokeWidth={2} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-400">{label}</p>
+          <p className="text-xl font-bold leading-tight text-white">{value}</p>
+        </div>
       </div>
-      <p className="mt-4 text-sm font-semibold text-slate-400">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-white">{value}</p>
     </div>
   );
 }
