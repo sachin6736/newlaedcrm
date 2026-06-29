@@ -590,7 +590,7 @@ function ShowLeads() {
                 </div>
               </label>
               <p className="text-xs text-slate-500">
-                Matches name, email, phone, make, model, year, and part requested.
+                Matches name, email, phone, make, model, year, part requested, and notes.
               </p>
             </form>
 
