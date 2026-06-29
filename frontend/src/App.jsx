@@ -4,6 +4,8 @@ import Login from "./components/login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ShowLeads from "./components/ShowLeads.jsx";
 import CreateLead from "./components/CreateLead.jsx";
+import CreateUser from "./components/CreateUser.jsx";
+import AdminRoute from "./components/AdminRoute.jsx";
 
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -42,6 +44,15 @@ function AppRoutes() {
           <ProtectedRoute>
             <CreateLead />
           </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/users/create"
+        element={
+          <AdminRoute>
+            <CreateUser />
+          </AdminRoute>
         }
       />
 

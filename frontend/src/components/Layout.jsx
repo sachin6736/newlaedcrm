@@ -1,14 +1,19 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut, PlusCircle } from "lucide-react";
+import { LayoutDashboard, LogOut, PlusCircle, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
- 
-const navItems = [
+
+const baseNavItems = [
   { to: "/leads", label: "All Leads", icon: LayoutDashboard },
   { to: "/leads/create", label: "Create Lead", icon: PlusCircle },
 ];
+
+const adminNavItems = [
+  { to: "/users/create", label: "Manage Users", icon: Users },
+];
  
 function Layout({ children, title, subtitle }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
   const navigate = useNavigate();
  
   const handleLogout = () => {
@@ -33,7 +38,13 @@ function Layout({ children, title, subtitle }) {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {user && (
               <p className="text-sm font-medium text-slate-400">
-                Signed in as <span className="text-emerald-300">{user.name}</span>
+                Signed in as{" "}
+                <span className="text-emerald-300">{user.name}</span>
+                {user.role && (
+                  <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-slate-300">
+                    {user.role}
+                  </span>
+                )}
               </p>
             )}
             <button

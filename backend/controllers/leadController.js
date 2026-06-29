@@ -1,4 +1,5 @@
 ﻿import Lead from "../models/Lead.js";
+import { getNextAssignee } from "../utils/assignLead.js";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -92,7 +93,11 @@ export const getLeads = async (req, res) => {
     const dateOptionsFilter = buildLeadFilter({ disposition, search });
 
     const [leads, total, quoted, ordered, availableDates] = await Promise.all([
-      Lead.find(listFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Lead.find(listFilter)
+        .populate("assignedTo", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       Lead.countDocuments(listFilter),
       Lead.countDocuments({ ...listFilter, disposition: "Quoted" }),
       Lead.countDocuments({ ...listFilter, disposition: "Ordered" }),
@@ -158,6 +163,8 @@ export const createLead = async (req, res) => {
       notes = "",
     } = req.body;
 
+    const assignedTo = await getNextAssignee();
+
     const lead = await Lead.create({
       name,
       email,
@@ -169,7 +176,10 @@ export const createLead = async (req, res) => {
       year,
       disposition,
       notes,
+      assignedTo,
     });
+
+    await lead.populate("assignedTo", "name email");
 
     res.status(201).json({ success: true, data: lead });
   } catch (error) {

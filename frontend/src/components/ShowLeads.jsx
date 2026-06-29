@@ -68,8 +68,12 @@ function formatDateFilterLabel(year, month, day) {
   return parts.join(" ");
 }
 
+function getAssignedUserId(lead) {
+  return lead.assignedTo?._id ?? lead.assignedTo ?? null;
+}
+
 function ShowLeads() {
-  const { authHeaders, logout } = useAuth();
+  const { authHeaders, logout, user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -503,13 +507,22 @@ function ShowLeads() {
         </div>
       )}
 
+      {!isAdmin && (
+        <div className="mt-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <span className="font-semibold text-emerald-300">Your leads</span> are highlighted in
+          green so you can spot them quickly among all team leads.
+        </div>
+      )}
+
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur">
         <div className="border-b border-slate-800 px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">Lead directory</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Leads are listed below. Open search and filters only when you need to narrow results.
+                {isAdmin
+                  ? "View every lead and who it is assigned to across your team."
+                  : "All team leads are listed below. Your assigned leads appear highlighted in green."}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -732,7 +745,18 @@ function ShowLeads() {
               <table className="min-w-full divide-y divide-slate-800">
                 <thead className="bg-slate-900/90">
                   <tr>
-                    {["Lead", "Phone", "Zip", "Make", "Model", "Year", "Part", "Disposition", "Notes"].map((heading) => (
+                    {[
+                      "Lead",
+                      ...(isAdmin ? ["Assigned To"] : []),
+                      "Phone",
+                      "Zip",
+                      "Make",
+                      "Model",
+                      "Year",
+                      "Part",
+                      "Disposition",
+                      "Notes",
+                    ].map((heading) => (
                       <th
                         className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
                         key={heading}
@@ -747,6 +771,11 @@ function ShowLeads() {
                     <LeadTableRow
                       key={lead._id}
                       lead={lead}
+                      isAdmin={isAdmin}
+                      isOwnLead={
+                        !isAdmin &&
+                        String(getAssignedUserId(lead)) === String(user?.id)
+                      }
                       editingLeadId={editingLeadId}
                       editNote={editNote}
                       isUpdating={isUpdating}
@@ -799,6 +828,8 @@ function ShowLeads() {
 
 function LeadTableRow({
   lead,
+  isAdmin,
+  isOwnLead,
   editingLeadId,
   editNote,
   isUpdating,
@@ -811,12 +842,28 @@ function LeadTableRow({
   onRequestDispositionChange,
   onViewNote,
 }) {
+  const rowClassName = isOwnLead
+    ? "bg-emerald-500/15 transition hover:bg-emerald-500/25 ring-1 ring-inset ring-emerald-500/30"
+    : "transition hover:bg-slate-800/40";
+
   return (
-    <tr className="transition hover:bg-slate-800/40">
+    <tr className={rowClassName}>
       <td className="px-5 py-4">
-        <div className="font-semibold text-white">{lead.name}</div>
+        <div className="flex items-center gap-2">
+          <div className="font-semibold text-white">{lead.name}</div>
+          {isOwnLead && (
+            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-950">
+              Yours
+            </span>
+          )}
+        </div>
         <div className="mt-1 text-sm text-slate-400">{lead.email}</div>
       </td>
+      {isAdmin && (
+        <td className="px-5 py-4 text-sm text-slate-300">
+          {lead.assignedTo?.name || "Unassigned"}
+        </td>
+      )}
       <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
       <td className="px-5 py-4 text-sm text-slate-300">{lead.zip || "—"}</td>
       <td className="px-5 py-4 text-sm text-slate-300">{lead.make || "—"}</td>

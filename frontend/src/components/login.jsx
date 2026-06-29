@@ -177,7 +177,7 @@ function Login() {
               </form>
  
               <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
-                New accounts are created by an administrator via the signup API.
+                New accounts are created by an administrator from the Manage Users page.
               </p>
             </div>
           </div>

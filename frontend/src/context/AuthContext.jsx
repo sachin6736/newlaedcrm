@@ -34,10 +34,13 @@ export function AuthProvider({ children }) {
     [token]
   );
  
+  const isAdmin = user?.role === "admin";
+
   const value = {
     token,
     user,
     isAuthenticated: Boolean(token),
+    isAdmin,
     login,
     logout,
     authHeaders,

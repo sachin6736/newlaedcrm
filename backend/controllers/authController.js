@@ -5,39 +5,15 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
  
-export const signup = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
- 
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide name, email, and password.",
-      });
-    }
- 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "A user with this email already exists.",
-      });
-    }
- 
-    const user = await User.create({ name, email, password });
- 
-    res.status(201).json({
-      success: true,
-      message: "User created successfully.",
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+const ensureBootstrapAdmin = async (user) => {
+  const adminCount = await User.countDocuments({ role: "admin" });
+
+  if (adminCount === 0) {
+    user.role = "admin";
+    await user.save();
   }
+
+  return user;
 };
  
 export const login = async (req, res) => {
@@ -58,6 +34,8 @@ export const login = async (req, res) => {
         message: "Invalid email or password.",
       });
     }
+
+    await ensureBootstrapAdmin(user);
  
     res.status(200).json({
       success: true,
@@ -66,6 +44,7 @@ export const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {

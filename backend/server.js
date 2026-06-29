@@ -8,6 +8,7 @@ dns.setServers(['1.1.1.1', '8.8.8.8']);
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
  
 dotenv.config();
 console.log(process.env.MONGO_URI);
@@ -41,6 +42,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
+app.use("/api/users", userRoutes);
  
 // Test Route
 app.get("/", (req, res) => {
