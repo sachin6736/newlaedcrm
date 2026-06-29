@@ -28,7 +28,7 @@ const buildDateExpression = ({ year, month, day } = {}) => {
   return { $and: parts };
 };
 
-const SEARCH_FIELDS = ["name", "email", "phone", "make", "model", "year", "partRequested"];
+const SEARCH_FIELDS = ["name", "email", "phone", "make", "model", "year", "partRequested", "notes"];
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -39,10 +39,12 @@ const buildSearchFilter = (search) => {
     return null;
   }
 
-  const regex = new RegExp(escapeRegex(term), "i");
+  const pattern = escapeRegex(term);
 
   return {
-    $or: SEARCH_FIELDS.map((field) => ({ [field]: regex })),
+    $or: SEARCH_FIELDS.map((field) => ({
+      [field]: { $regex: pattern, $options: "i" },
+    })),
   };
 };
 

@@ -54,7 +54,6 @@ const leadSchema = new mongoose.Schema(
         "Part not available",
         "Ordered",
         "Already ordered",
-        "Sale",
       ],
       default: "Quoted",
     },

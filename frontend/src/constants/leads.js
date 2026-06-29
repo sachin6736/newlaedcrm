@@ -11,7 +11,6 @@ export const dispositions = [
   "Part not available",
   "Ordered",
   "Already ordered",
-  "Sale",
 ];
 
 export const ALL_DISPOSITIONS = "all";
@@ -42,7 +41,7 @@ export const getYearOptions = () => {
 export const DAYS = Array.from({ length: 31 }, (_, index) => String(index + 1));
 
 export const SEARCH_PLACEHOLDER =
-  "Search by name, email, phone, make, model, year, or part";
+  "Search by name, email, phone, make, model, year, part, or notes";
 
 export const initialLeadForm = {
   name: "",
