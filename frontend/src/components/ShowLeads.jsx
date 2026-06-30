@@ -531,7 +531,7 @@ function ShowLeads() {
         )
       );
 
-      setSuccess(`Follow-up cleared for ${followUpLead.name}.`);
+      setSuccess("");
       setFollowUpLead(null);
     } catch (err) {
       setError(err.message);
