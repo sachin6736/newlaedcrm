@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, LogOut, PlusCircle, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import FollowUpNotifier from "./FollowUpNotifier.jsx";
 
 const baseNavItems = [
   { to: "/leads", label: "All Leads", icon: LayoutDashboard },
@@ -83,6 +84,8 @@ function Layout({ children, title, subtitle }) {
           </div>
         </nav>
       </header>
+
+      <FollowUpNotifier />
  
       <main className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8">{children}</main>
     </div>

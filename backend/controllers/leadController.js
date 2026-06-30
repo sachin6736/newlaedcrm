@@ -93,8 +93,7 @@ export const getLeads = async (req, res) => {
     const dateOptionsFilter = buildLeadFilter({ disposition, search });
 
     const [leads, total, quoted, ordered, availableDates] = await Promise.all([
-      Lead.find(listFilter)
-        .populate("assignedTo", "name email")
+      populateLeadFields(Lead.find(listFilter))
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -179,18 +178,46 @@ export const createLead = async (req, res) => {
       assignedTo,
     });
 
-    await lead.populate("assignedTo", "name email");
+    const populatedLead = await populateLeadFields(Lead.findById(lead._id));
 
-    res.status(201).json({ success: true, data: lead });
+    res.status(201).json({ success: true, data: populatedLead });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const populateLeadFields = (query) =>
+  query.populate("assignedTo", "name email").populate("followUpSetBy", "name email");
+
+export const getDueFollowUps = async (req, res) => {
+  try {
+    const now = new Date();
+    const filter = {
+      followUpAt: { $lte: now, $ne: null },
+      followUpRemindedAt: null,
+    };
+
+    if (req.user.role !== "admin") {
+      filter.assignedTo = req.user._id;
+    }
+
+    const leads = await populateLeadFields(
+      Lead.find(filter).sort({ followUpAt: 1 })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 export const updateLead = async (req, res) => {
   try {
     const { id } = req.params;
-    const { notes, disposition } = req.body;
+    const { notes, disposition, followUpAt, followUpNote, clearFollowUp } = req.body;
 
     const lead = await Lead.findById(id);
 
@@ -210,13 +237,86 @@ export const updateLead = async (req, res) => {
       hasUpdates = true;
     }
 
+    if (clearFollowUp) {
+      lead.followUpAt = null;
+      lead.followUpNote = "";
+      lead.followUpSetBy = null;
+      lead.followUpRemindedAt = null;
+      hasUpdates = true;
+    } else if (followUpAt !== undefined) {
+      if (followUpAt === null) {
+        lead.followUpAt = null;
+        lead.followUpNote = "";
+        lead.followUpSetBy = null;
+        lead.followUpRemindedAt = null;
+      } else {
+        const parsedDate = new Date(followUpAt);
+
+        if (Number.isNaN(parsedDate.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid follow-up date.",
+          });
+        }
+
+        lead.followUpAt = parsedDate;
+        lead.followUpNote = followUpNote?.trim() || "";
+        lead.followUpSetBy = req.user._id;
+        lead.followUpRemindedAt = null;
+      }
+
+      hasUpdates = true;
+    } else if (followUpNote !== undefined && lead.followUpAt) {
+      lead.followUpNote = followUpNote;
+      hasUpdates = true;
+    }
+
     if (!hasUpdates) {
       return res.status(400).json({ success: false, message: "No valid fields to update" });
     }
 
     await lead.save();
 
-    res.status(200).json({ success: true, data: lead });
+    const updatedLead = await populateLeadFields(Lead.findById(lead._id));
+
+    res.status(200).json({ success: true, data: updatedLead });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const dismissFollowUp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const lead = await Lead.findById(id);
+
+    if (!lead) {
+      return res.status(404).json({ success: false, message: "Lead not found" });
+    }
+
+    if (!lead.followUpAt) {
+      return res.status(400).json({
+        success: false,
+        message: "This lead has no follow-up scheduled.",
+      });
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      lead.assignedTo?.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only dismiss follow-ups for your assigned leads.",
+      });
+    }
+
+    lead.followUpRemindedAt = new Date();
+    await lead.save();
+
+    const updatedLead = await populateLeadFields(Lead.findById(lead._id));
+
+    res.status(200).json({ success: true, data: updatedLead });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }

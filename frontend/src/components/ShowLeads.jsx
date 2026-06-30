@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   SlidersHorizontal,
   Sparkles,
+  Bell,
   StickyNote,
   X,
 } from "lucide-react";
@@ -72,6 +73,35 @@ function getAssignedUserId(lead) {
   return lead.assignedTo?._id ?? lead.assignedTo ?? null;
 }
 
+function formatFollowUpDate(date) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(date));
+}
+
+function toDatetimeLocalValue(date = new Date()) {
+  const value = new Date(date);
+  const pad = (part) => String(part).padStart(2, "0");
+
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+}
+
+function getDefaultFollowUpDatetime() {
+  const nextHour = new Date();
+  nextHour.setMinutes(0, 0, 0);
+  nextHour.setHours(nextHour.getHours() + 1);
+  return toDatetimeLocalValue(nextHour);
+}
+
+function isFollowUpDue(lead) {
+  if (!lead.followUpAt || lead.followUpRemindedAt) {
+    return false;
+  }
+
+  return new Date(lead.followUpAt) <= new Date();
+}
+
 function ShowLeads() {
   const { authHeaders, logout, user, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -108,6 +138,12 @@ function ShowLeads() {
   const [pendingDispositionChange, setPendingDispositionChange] = useState(null);
   const [viewingNote, setViewingNote] = useState(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [followUpLead, setFollowUpLead] = useState(null);
+  const [followUpForm, setFollowUpForm] = useState({
+    datetime: getDefaultFollowUpDatetime(),
+    note: "",
+  });
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
 
   const hasActiveDateFilter = useMemo(() => {
     return yearFilter !== ALL_YEARS || monthFilter !== ALL_MONTHS || dayFilter !== ALL_DAYS;
@@ -366,6 +402,141 @@ function ShowLeads() {
       return false;
     } finally {
       setUpdatingDispositionId(null);
+    }
+  };
+
+  const openFollowUpModal = (lead) => {
+    setFollowUpLead(lead);
+    setFollowUpForm({
+      datetime: lead.followUpAt
+        ? toDatetimeLocalValue(lead.followUpAt)
+        : getDefaultFollowUpDatetime(),
+      note: lead.followUpNote || "",
+    });
+    setError("");
+    setSuccess("");
+  };
+
+  const closeFollowUpModal = () => {
+    if (savingFollowUp) {
+      return;
+    }
+
+    setFollowUpLead(null);
+  };
+
+  const saveFollowUp = async () => {
+    if (!followUpLead || savingFollowUp) {
+      return;
+    }
+
+    const scheduledDate = new Date(followUpForm.datetime);
+
+    if (Number.isNaN(scheduledDate.getTime())) {
+      setError("Please choose a valid follow-up date and time.");
+      return;
+    }
+
+    if (scheduledDate <= new Date()) {
+      setError("Follow-up time must be in the future.");
+      return;
+    }
+
+    setSavingFollowUp(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch(`${API_URL}/${followUpLead._id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          followUpAt: scheduledDate.toISOString(),
+          followUpNote: followUpForm.note.trim(),
+        }),
+      });
+      const result = await response.json();
+
+      if (response.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to schedule follow-up");
+      }
+
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === followUpLead._id
+            ? {
+                ...lead,
+                followUpAt: result.data.followUpAt,
+                followUpNote: result.data.followUpNote,
+                followUpSetBy: result.data.followUpSetBy,
+                followUpRemindedAt: null,
+              }
+            : lead
+        )
+      );
+
+      setSuccess(`Follow-up scheduled for ${followUpLead.name}.`);
+      setFollowUpLead(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingFollowUp(false);
+    }
+  };
+
+  const clearFollowUp = async () => {
+    if (!followUpLead || savingFollowUp) {
+      return;
+    }
+
+    setSavingFollowUp(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch(`${API_URL}/${followUpLead._id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ clearFollowUp: true }),
+      });
+      const result = await response.json();
+
+      if (response.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to clear follow-up");
+      }
+
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === followUpLead._id
+            ? {
+                ...lead,
+                followUpAt: null,
+                followUpNote: "",
+                followUpSetBy: null,
+                followUpRemindedAt: null,
+              }
+            : lead
+        )
+      );
+
+      setSuccess(`Follow-up cleared for ${followUpLead.name}.`);
+      setFollowUpLead(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingFollowUp(false);
     }
   };
 
@@ -755,6 +926,7 @@ function ShowLeads() {
                       "Year",
                       "Part",
                       "Disposition",
+                      "Follow-up",
                       "Notes",
                     ].map((heading) => (
                       <th
@@ -787,6 +959,7 @@ function ShowLeads() {
                       onSaveNote={saveNote}
                       onRequestDispositionChange={requestDispositionChange}
                       onViewNote={openNoteViewer}
+                      onOpenFollowUp={openFollowUpModal}
                     />
                   ))}
                 </tbody>
@@ -822,6 +995,18 @@ function ShowLeads() {
           onClose={closeNoteViewer}
         />
       )}
+
+      {followUpLead && (
+        <FollowUpModal
+          lead={followUpLead}
+          form={followUpForm}
+          isSaving={savingFollowUp}
+          onChange={setFollowUpForm}
+          onSave={saveFollowUp}
+          onClear={clearFollowUp}
+          onClose={closeFollowUpModal}
+        />
+      )}
     </Layout>
   );
 }
@@ -841,10 +1026,14 @@ function LeadTableRow({
   onSaveNote,
   onRequestDispositionChange,
   onViewNote,
+  onOpenFollowUp,
 }) {
-  const rowClassName = isOwnLead
-    ? "bg-emerald-500/15 transition hover:bg-emerald-500/25 ring-1 ring-inset ring-emerald-500/30"
-    : "transition hover:bg-slate-800/40";
+  const followUpDue = isFollowUpDue(lead);
+  const rowClassName = followUpDue
+    ? "bg-amber-500/15 transition hover:bg-amber-500/25 ring-1 ring-inset ring-amber-500/40"
+    : isOwnLead
+      ? "bg-emerald-500/15 transition hover:bg-emerald-500/25 ring-1 ring-inset ring-emerald-500/30"
+      : "transition hover:bg-slate-800/40";
 
   return (
     <tr className={rowClassName}>
@@ -886,6 +1075,33 @@ function LeadTableRow({
             </option>
           ))}
         </select>
+      </td>
+      <td className="min-w-[11rem] px-5 py-4 text-sm text-slate-300">
+        {lead.followUpAt ? (
+          <div>
+            <p className={`font-semibold ${followUpDue ? "text-amber-300" : "text-slate-200"}`}>
+              {formatFollowUpDate(lead.followUpAt)}
+            </p>
+            {lead.followUpNote && (
+              <p className="mt-1 line-clamp-2 text-xs text-slate-400">{lead.followUpNote}</p>
+            )}
+            {followUpDue && (
+              <p className="mt-1 text-xs font-bold uppercase tracking-wide text-amber-300">
+                Due now
+              </p>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-500">Not scheduled</span>
+        )}
+        <button
+          type="button"
+          onClick={() => onOpenFollowUp(lead)}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
+        >
+          <Bell className="h-3.5 w-3.5" />
+          {lead.followUpAt ? "Edit" : "Schedule"}
+        </button>
       </td>
       <td className="w-36 max-w-[9rem] px-5 py-4 text-sm text-slate-400">
         {editingLeadId === lead._id ? (
@@ -1051,6 +1267,113 @@ function NotesViewModal({ leadName, notes, onClose }) {
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
           >
             Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FollowUpModal({ lead, form, isSaving, onChange, onSave, onClear, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !isSaving) {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSaving, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/30"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="followup-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+            <Bell className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-lg font-bold text-white" id="followup-modal-title">
+              Schedule follow-up
+            </h3>
+            <p className="mt-1 truncate text-sm text-slate-400">{lead.name}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+            Date & time
+            <input
+              className="h-12 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+              type="datetime-local"
+              value={form.datetime}
+              onChange={(event) =>
+                onChange((current) => ({ ...current, datetime: event.target.value }))
+              }
+              disabled={isSaving}
+              required
+            />
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+            Reminder note
+            <textarea
+              className="min-h-[88px] resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
+              value={form.note}
+              onChange={(event) =>
+                onChange((current) => ({ ...current, note: event.target.value }))
+              }
+              placeholder="e.g. Call back about pricing"
+              disabled={isSaving}
+              rows={3}
+            />
+          </label>
+
+          <p className="text-xs leading-relaxed text-slate-500">
+            The assigned user will be reminded at this time with an in-app alert and browser
+            notification.
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+          {lead.followUpAt && (
+            <button
+              type="button"
+              onClick={onClear}
+              disabled={isSaving}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-red-500/30 px-5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Clear follow-up
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSaving}
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? "Saving..." : "Save follow-up"}
           </button>
         </div>
       </div>

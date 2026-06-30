@@ -67,6 +67,24 @@ const leadSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    followUpAt: {
+      type: Date,
+      default: null,
+    },
+    followUpNote: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    followUpSetBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    followUpRemindedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
