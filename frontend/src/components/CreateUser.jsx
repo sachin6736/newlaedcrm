@@ -97,7 +97,7 @@ function CreateUser() {
   return (
     <Layout
       title="Manage Users"
-      subtitle="Create team accounts and assign roles. New leads are distributed to users one by one."
+      subtitle="Create team accounts and assign roles. Admin and platform leads rotate across users; user-created leads stay with the creator."
     >
       <div className="mx-auto max-w-5xl">
         <Link
@@ -206,7 +206,7 @@ function CreateUser() {
               <div>
                 <h2 className="text-xl font-bold text-white">Team members</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Leads rotate across users with the &quot;user&quot; role.
+                  Admin-created and platform leads (website, Facebook, etc.) rotate across users with the &quot;user&quot; role.
                 </p>
               </div>
             </div>

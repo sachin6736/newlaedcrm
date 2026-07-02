@@ -1,5 +1,5 @@
 ﻿import Lead from "../models/Lead.js";
-import { getNextAssignee } from "../utils/assignLead.js";
+import { resolveAssignmentForCreator } from "../utils/assignLead.js";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -162,7 +162,7 @@ export const createLead = async (req, res) => {
       notes = "",
     } = req.body;
 
-    const assignedTo = await getNextAssignee();
+    const assignedTo = await resolveAssignmentForCreator(req.user);
 
     const lead = await Lead.create({
       name,
@@ -176,6 +176,8 @@ export const createLead = async (req, res) => {
       disposition,
       notes,
       assignedTo,
+      createdBy: req.user._id,
+      source: "manual",
     });
 
     const populatedLead = await populateLeadFields(Lead.findById(lead._id));
@@ -187,7 +189,10 @@ export const createLead = async (req, res) => {
 };
 
 const populateLeadFields = (query) =>
-  query.populate("assignedTo", "name email").populate("followUpSetBy", "name email");
+  query
+    .populate("assignedTo", "name email")
+    .populate("createdBy", "name email")
+    .populate("followUpSetBy", "name email");
 
 export const getDueFollowUps = async (req, res) => {
   try {
