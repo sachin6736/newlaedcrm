@@ -67,6 +67,16 @@ const leadSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    source: {
+      type: String,
+      enum: ["manual", "website", "facebook", "other"],
+      default: "manual",
+    },
     followUpAt: {
       type: Date,
       default: null,

@@ -6,7 +6,7 @@ import { API_URL, dispositions, initialLeadForm } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
  
 function CreateLead() {
-  const { authHeaders, logout } = useAuth();
+  const { authHeaders, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState(initialLeadForm);
   const [submitting, setSubmitting] = useState(false);
@@ -62,7 +62,11 @@ function CreateLead() {
   return (
     <Layout
       title="Create Lead"
-      subtitle="Add a new sales opportunity and capture customer details in one step."
+      subtitle={
+        isAdmin
+          ? "This lead will be assigned to the next user in the rotation."
+          : "This lead will be assigned to you automatically."
+      }
     >
       <div className="mx-auto max-w-3xl">
         <Link
@@ -81,7 +85,9 @@ function CreateLead() {
             <div>
               <h2 className="text-xl font-bold text-white">New lead details</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Fill in the customer information below to add them to your pipeline.
+                {isAdmin
+                  ? "Fill in the details below. The lead will be split to the next team member in rotation."
+                  : "Fill in the details below. The lead will be assigned to your account."}
               </p>
             </div>
           </div>
