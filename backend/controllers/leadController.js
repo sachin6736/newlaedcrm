@@ -1,7 +1,8 @@
 ﻿import Lead from "../models/Lead.js";
-import { resolveAssignmentForCreator } from "../utils/assignLead.js";
+import { getNextAssignee, resolveAssignmentForCreator } from "../utils/assignLead.js";
 
 const DEFAULT_PAGE_SIZE = 10;
+const EXTERNAL_SOURCES = ["website", "facebook", "other"];
 
 const buildDateExpression = ({ year, month, day } = {}) => {
   const parts = [];
@@ -160,9 +161,14 @@ export const createLead = async (req, res) => {
       year,
       disposition = "Quoted",
       notes = "",
+      source = "website",
     } = req.body;
 
-    const assignedTo = await resolveAssignmentForCreator(req.user);
+    const isAuthenticatedRequest = Boolean(req.user);
+    const normalizedSource = EXTERNAL_SOURCES.includes(source) ? source : "website";
+    const assignedTo = isAuthenticatedRequest
+      ? await resolveAssignmentForCreator(req.user)
+      : await getNextAssignee();
 
     const lead = await Lead.create({
       name,
@@ -176,8 +182,8 @@ export const createLead = async (req, res) => {
       disposition,
       notes,
       assignedTo,
-      createdBy: req.user._id,
-      source: "manual",
+      createdBy: req.user?._id || null,
+      source: isAuthenticatedRequest ? "manual" : normalizedSource,
     });
 
     const populatedLead = await populateLeadFields(Lead.findById(lead._id));
