@@ -12,19 +12,31 @@ const populateLeadFields = (query) =>
 export const createExternalLead = async (req, res) => {
   try {
     const {
-      name,
+      name: bodyName,
+      fullName,
+      full_name,
       email,
-      phone,
-      zip,
-      partRequested,
+      phone: bodyPhone,
+      phoneNumber,
+      phone_number,
+      zip: bodyZip,
+      zipCode,
+      zip_code,
+      postal_code,
+      partRequested: bodyPartRequested,
+      part_requested,
       make,
       model,
       year,
       disposition = "Quoted",
       notes = "",
-      source = "other",
+      source = "facebook",
     } = req.body;
 
+    const name = bodyName || fullName || full_name;
+    const phone = bodyPhone || phoneNumber || phone_number;
+    const zip = bodyZip || zipCode || zip_code || postal_code;
+    const partRequested = bodyPartRequested || part_requested;
     const normalizedSource = EXTERNAL_SOURCES.includes(source) ? source : "other";
     const assignedTo = await getNextAssignee();
 
