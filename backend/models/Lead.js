@@ -43,6 +43,12 @@ const leadSchema = new mongoose.Schema(
       required: false,
       trim: true,
     },
+    yearMakeModel: {
+      type: String,
+      required: false,
+      trim: true,
+      default: "",
+    },
     disposition: {
       type: String,
       enum: [

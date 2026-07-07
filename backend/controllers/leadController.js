@@ -1,5 +1,6 @@
 ﻿import Lead from "../models/Lead.js";
 import { getNextAssignee, resolveAssignmentForCreator } from "../utils/assignLead.js";
+import { normalizeVehicleFields } from "../utils/vehicleFields.js";
 
 const DEFAULT_PAGE_SIZE = 10;
 const EXTERNAL_SOURCES = ["website", "facebook", "other"];
@@ -30,7 +31,17 @@ const buildDateExpression = ({ year, month, day } = {}) => {
   return { $and: parts };
 };
 
-const SEARCH_FIELDS = ["name", "email", "phone", "make", "model", "year", "partRequested", "notes"];
+const SEARCH_FIELDS = [
+  "name",
+  "email",
+  "phone",
+  "make",
+  "model",
+  "year",
+  "yearMakeModel",
+  "partRequested",
+  "notes",
+];
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -156,14 +167,12 @@ export const createLead = async (req, res) => {
       phone,
       zip,
       partRequested,
-      make,
-      model,
-      year,
       disposition = "Quoted",
       notes = "",
       source = "website",
     } = req.body;
 
+    const { yearMakeModel, year, make, model } = normalizeVehicleFields(req.body);
     const isAuthenticatedRequest = Boolean(req.user);
     const normalizedSource = EXTERNAL_SOURCES.includes(source) ? source : "website";
     const assignedTo = isAuthenticatedRequest
@@ -179,6 +188,7 @@ export const createLead = async (req, res) => {
       make,
       model,
       year,
+      yearMakeModel,
       disposition,
       notes,
       assignedTo,

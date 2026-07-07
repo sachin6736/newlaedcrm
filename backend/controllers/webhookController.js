@@ -1,5 +1,6 @@
 import Lead from "../models/Lead.js";
 import { getNextAssignee } from "../utils/assignLead.js";
+import { normalizeVehicleFields } from "../utils/vehicleFields.js";
 
 const EXTERNAL_SOURCES = ["website", "facebook", "other"];
 
@@ -25,9 +26,6 @@ export const createExternalLead = async (req, res) => {
       postal_code,
       partRequested: bodyPartRequested,
       part_requested,
-      make,
-      model,
-      year,
       disposition = "Quoted",
       notes = "",
       source = "facebook",
@@ -37,6 +35,7 @@ export const createExternalLead = async (req, res) => {
     const phone = bodyPhone || phoneNumber || phone_number;
     const zip = bodyZip || zipCode || zip_code || postal_code;
     const partRequested = bodyPartRequested || part_requested;
+    const { yearMakeModel, year, make, model } = normalizeVehicleFields(req.body);
     const normalizedSource = EXTERNAL_SOURCES.includes(source) ? source : "other";
     const assignedTo = await getNextAssignee();
 
@@ -49,6 +48,7 @@ export const createExternalLead = async (req, res) => {
       make,
       model,
       year,
+      yearMakeModel,
       disposition,
       notes,
       assignedTo,
