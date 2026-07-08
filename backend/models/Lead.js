@@ -31,13 +31,15 @@ const leadSchema = new mongoose.Schema(
     },
     make: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
+      default: "",
     },
     model: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
+      default: "",
     },
     year: {
       type: String,
