@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user"],
       default: "user",
     },
+    leadAssignmentEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

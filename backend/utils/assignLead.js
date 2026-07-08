@@ -16,7 +16,10 @@ async function getRoundRobinFilter() {
 }
 
 export async function getNextAssignee() {
-  const users = await User.find({ role: "user" }).sort({ createdAt: 1 });
+  const users = await User.find({
+    role: "user",
+    leadAssignmentEnabled: { $ne: false },
+  }).sort({ createdAt: 1 });
 
   if (users.length === 0) {
     return null;

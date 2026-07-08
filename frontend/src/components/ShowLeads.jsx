@@ -678,13 +678,6 @@ function ShowLeads() {
         </div>
       )}
 
-      {!isAdmin && (
-        <div className="mt-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          <span className="font-semibold text-emerald-300">Your leads</span> are highlighted in
-          green so you can spot them quickly among all team leads.
-        </div>
-      )}
-
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur">
         <div className="border-b border-slate-800 px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -693,7 +686,7 @@ function ShowLeads() {
               <p className="mt-1 text-sm text-slate-400">
                 {isAdmin
                   ? "View every lead and who it is assigned to across your team."
-                  : "All team leads are listed below. Your assigned leads appear highlighted in green."}
+                  : "All team leads are listed below for quick review and follow-up."}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -930,7 +923,7 @@ function ShowLeads() {
                       "Notes",
                     ].map((heading) => (
                       <th
-                        className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
+                        className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
                         key={heading}
                       >
                         {heading}
@@ -1031,37 +1024,38 @@ function LeadTableRow({
   const followUpDue = isFollowUpDue(lead);
   const rowClassName = followUpDue
     ? "bg-amber-500/15 transition hover:bg-amber-500/25 ring-1 ring-inset ring-amber-500/40"
-    : isOwnLead
-      ? "bg-emerald-500/15 transition hover:bg-emerald-500/25 ring-1 ring-inset ring-emerald-500/30"
-      : "transition hover:bg-slate-800/40";
+    : "transition hover:bg-slate-800/40";
 
   return (
     <tr className={rowClassName}>
-      <td className="px-5 py-4">
-        <div className="flex items-center gap-2">
-          <div className="font-semibold text-white">{lead.name}</div>
+      <td className="px-4 py-3">
+        <div className="flex min-w-[10rem] items-center gap-2">
           {isOwnLead && (
-            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-950">
-              Yours
-            </span>
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.12)]"
+              aria-label="Assigned to you"
+              role="img"
+              title="Assigned to you"
+            />
           )}
+          <div className="min-w-0 font-semibold text-white">{lead.name}</div>
         </div>
         <div className="mt-1 text-sm text-slate-400">{lead.email}</div>
       </td>
       {isAdmin && (
-        <td className="px-5 py-4 text-sm text-slate-300">
+        <td className="px-4 py-3 text-sm text-slate-300">
           {lead.assignedTo?.name || "Unassigned"}
         </td>
       )}
-      <td className="px-5 py-4 text-sm text-slate-300">{lead.phone}</td>
-      <td className="px-5 py-4 text-sm text-slate-300">{lead.zip || "—"}</td>
-      <td className="px-5 py-4 text-sm text-slate-300">{lead.make || "—"}</td>
-      <td className="px-5 py-4 text-sm text-slate-300">{lead.model || "—"}</td>
-      <td className="px-5 py-4 text-sm text-slate-300">{lead.year || "—"}</td>
-      <td className="max-w-xs px-5 py-4 text-sm text-slate-300">
+      <td className="px-4 py-3 text-sm text-slate-300">{lead.phone}</td>
+      <td className="px-4 py-3 text-sm text-slate-300">{lead.zip || "—"}</td>
+      <td className="px-4 py-3 text-sm text-slate-300">{lead.make || "—"}</td>
+      <td className="px-4 py-3 text-sm text-slate-300">{lead.model || "—"}</td>
+      <td className="px-4 py-3 text-sm text-slate-300">{lead.year || "—"}</td>
+      <td className="max-w-xs px-4 py-3 text-sm text-slate-300">
         {lead.partRequested || "—"}
       </td>
-      <td className="px-5 py-4">
+      <td className="px-4 py-3">
         <select
           className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
           value={lead.disposition}
@@ -1076,7 +1070,7 @@ function LeadTableRow({
           ))}
         </select>
       </td>
-      <td className="min-w-[11rem] px-5 py-4 text-sm text-slate-300">
+      <td className="min-w-[11rem] px-4 py-3 text-sm text-slate-300">
         {lead.followUpAt ? (
           <div>
             <p className={`font-semibold ${followUpDue ? "text-amber-300" : "text-slate-200"}`}>
@@ -1103,7 +1097,7 @@ function LeadTableRow({
           {lead.followUpAt ? "Edit" : "Schedule"}
         </button>
       </td>
-      <td className="w-36 max-w-[9rem] px-5 py-4 text-sm text-slate-400">
+      <td className="w-36 max-w-[9rem] px-4 py-3 text-sm text-slate-400">
         {editingLeadId === lead._id ? (
           <div className="flex min-w-[12rem] flex-col gap-2">
             <textarea

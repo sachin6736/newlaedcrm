@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, PauseCircle, PlayCircle, Shield, UserPlus, Users } from "lucide-react";
 import Layout from "./Layout.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiUrl } from "../config/api.js";
@@ -21,6 +21,7 @@ function CreateUser() {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingAssignmentUserId, setUpdatingAssignmentUserId] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -94,10 +95,49 @@ function CreateUser() {
     }
   };
 
+  const handleToggleLeadAssignment = async (teamUser) => {
+    const userId = teamUser._id || teamUser.id;
+    const nextStatus = teamUser.leadAssignmentEnabled === false;
+
+    try {
+      setUpdatingAssignmentUserId(userId);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(`${USERS_API_URL}/${userId}/lead-assignment`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ leadAssignmentEnabled: nextStatus }),
+      });
+      const result = await response.json();
+
+      if (response.status === 401) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || "Unable to update lead assignment");
+      }
+
+      setUsers((current) =>
+        current.map((user) =>
+          (user._id || user.id) === userId ? { ...user, ...result.data } : user
+        )
+      );
+      setSuccess(result.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingAssignmentUserId(null);
+    }
+  };
+
   return (
     <Layout
       title="Manage Users"
-      subtitle="Create team accounts and assign roles. Admin and platform leads rotate across users; user-created leads stay with the creator."
+      subtitle="Create team accounts, assign roles, and pause automatic lead assignment when a user is unavailable."
     >
       <div className="mx-auto max-w-5xl">
         <Link
@@ -206,7 +246,7 @@ function CreateUser() {
               <div>
                 <h2 className="text-xl font-bold text-white">Team members</h2>
                 <p className="mt-1 text-sm text-slate-400">
-                  Admin-created and platform leads (website, Facebook, etc.) rotate across users with the &quot;user&quot; role.
+                  Admin-created and platform leads rotate across users who are turned on.
                 </p>
               </div>
             </div>
@@ -220,22 +260,48 @@ function CreateUser() {
                 users.map((teamUser) => (
                   <div
                     key={teamUser._id || teamUser.id}
-                    className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3"
+                    className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
-                      <p className="font-semibold text-white">{teamUser.name}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-white">{teamUser.name}</p>
                       <p className="text-sm text-slate-400">{teamUser.email}</p>
                     </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-                        teamUser.role === "admin"
-                          ? "bg-amber-500/15 text-amber-300"
-                          : "bg-emerald-500/15 text-emerald-300"
-                      }`}
-                    >
-                      {teamUser.role === "admin" && <Shield className="h-3 w-3" />}
-                      {teamUser.role}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                          teamUser.role === "admin"
+                            ? "bg-amber-500/15 text-amber-300"
+                            : "bg-emerald-500/15 text-emerald-300"
+                        }`}
+                      >
+                        {teamUser.role === "admin" && <Shield className="h-3 w-3" />}
+                        {teamUser.role}
+                      </span>
+
+                      {teamUser.role === "user" && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLeadAssignment(teamUser)}
+                          disabled={updatingAssignmentUserId === (teamUser._id || teamUser.id)}
+                          className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                            teamUser.leadAssignmentEnabled === false
+                              ? "border-slate-700 bg-slate-800/80 text-slate-300 hover:border-emerald-500/40 hover:text-white"
+                              : "border-emerald-500/20 bg-emerald-500/15 text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-500/20"
+                          }`}
+                          aria-pressed={teamUser.leadAssignmentEnabled !== false}
+                          aria-label={`${
+                            teamUser.leadAssignmentEnabled === false ? "Resume" : "Pause"
+                          } lead assignment for ${teamUser.name}`}
+                        >
+                          {teamUser.leadAssignmentEnabled === false ? (
+                            <PlayCircle className="h-4 w-4" />
+                          ) : (
+                            <PauseCircle className="h-4 w-4" />
+                          )}
+                          {teamUser.leadAssignmentEnabled === false ? "Paused" : "Receiving leads"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

@@ -46,9 +46,61 @@ export const createUser = async (req, res) => {
       message: "User created successfully.",
       data: {
         id: user._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        leadAssignmentEnabled: user.leadAssignmentEnabled,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateLeadAssignmentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { leadAssignmentEnabled } = req.body;
+
+    if (typeof leadAssignmentEnabled !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Lead assignment status must be true or false.",
+      });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (user.role !== "user") {
+      return res.status(400).json({
+        success: false,
+        message: "Lead assignment can only be changed for users.",
+      });
+    }
+
+    user.leadAssignmentEnabled = leadAssignmentEnabled;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: leadAssignmentEnabled
+        ? "Lead assignment resumed for this user."
+        : "Lead assignment paused for this user.",
+      data: {
+        id: user._id,
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        leadAssignmentEnabled: user.leadAssignmentEnabled,
       },
     });
   } catch (error) {
