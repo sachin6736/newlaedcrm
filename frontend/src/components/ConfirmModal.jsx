@@ -78,11 +78,15 @@ function ConfirmModal({
 
   return createPortal(
     <div
+<<<<<<< HEAD
       className={`fixed inset-0 z-[9999] flex items-center justify-center px-4 transition-all duration-200 ease-out ${
         visible
           ? "bg-slate-950/70 opacity-100 backdrop-blur-sm"
           : "bg-slate-950/0 opacity-0 backdrop-blur-none"
       }`}
+=======
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
+>>>>>>> 6e0a47456c7d6e780c57782586fe237f60185b63
       onClick={() => {
         if (!isLoading && open) {
           onCancel();
@@ -91,11 +95,15 @@ function ConfirmModal({
       role="presentation"
     >
       <div
+<<<<<<< HEAD
         className={`w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40 transition-all duration-200 ease-out ${
           visible
             ? "translate-y-0 scale-100 opacity-100"
             : "translate-y-3 scale-95 opacity-0"
         }`}
+=======
+        className="max-h-[calc(100vh-3rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40"
+>>>>>>> 6e0a47456c7d6e780c57782586fe237f60185b63
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
