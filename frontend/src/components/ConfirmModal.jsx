@@ -55,7 +55,7 @@ function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 'z-9999' flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
       onClick={() => {
         if (!isLoading) {
           onCancel();
@@ -64,7 +64,7 @@ function ConfirmModal({
       role="presentation"
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40"
+        className="max-h-[calc(100vh-3rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
