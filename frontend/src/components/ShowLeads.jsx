@@ -32,6 +32,7 @@ import {
   SEARCH_PLACEHOLDER,
 } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import ConfirmModal from "./ConfirmModal.jsx";
 
 const PAGE_SIZE = 10;
 const NOTE_PREVIEW_LENGTH = 15;
@@ -306,16 +307,20 @@ function ShowLeads() {
       return;
     }
 
+    setError("");
     setPendingDispositionChange({
       leadId: lead._id,
       leadName: lead.name,
       previousDisposition: lead.disposition,
       nextDisposition,
     });
-    setError("");
   };
 
   const cancelDispositionChange = () => {
+    if (updatingDispositionId) {
+      return;
+    }
+
     setPendingDispositionChange(null);
   };
 
@@ -590,7 +595,6 @@ function ShowLeads() {
     disposition = dispositionFilter,
   } = {}) => {
     cancelEditingNote();
-    cancelDispositionChange();
     setError("");
     setSuccess("");
     setLoading(true);
@@ -620,7 +624,6 @@ function ShowLeads() {
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     cancelEditingNote();
-    cancelDispositionChange();
     setError("");
     setSuccess("");
     setLoading(true);
@@ -645,7 +648,6 @@ function ShowLeads() {
     }
 
     cancelEditingNote();
-    cancelDispositionChange();
     setError("");
     setLoading(true);
     setPage(nextPage);
@@ -945,7 +947,6 @@ function ShowLeads() {
                       editNote={editNote}
                       isUpdating={isUpdating}
                       updatingDispositionId={updatingDispositionId}
-                      pendingDispositionChange={pendingDispositionChange}
                       onEditNoteChange={setEditNote}
                       onStartEditingNote={startEditingNote}
                       onCancelEditingNote={cancelEditingNote}
@@ -970,16 +971,39 @@ function ShowLeads() {
         )}
       </div>
 
-      {pendingDispositionChange && (
-        <DispositionConfirmModal
-          leadName={pendingDispositionChange.leadName}
-          previousDisposition={pendingDispositionChange.previousDisposition}
-          nextDisposition={pendingDispositionChange.nextDisposition}
-          isSaving={updatingDispositionId === pendingDispositionChange.leadId}
-          onConfirm={confirmDispositionChange}
-          onCancel={cancelDispositionChange}
-        />
-      )}
+      <ConfirmModal
+        open={Boolean(pendingDispositionChange)}
+        title="Change disposition?"
+        message={
+          pendingDispositionChange ? (
+            <p>
+              Save the status change for{" "}
+              <span className="font-semibold text-white">
+                {pendingDispositionChange.leadName}
+              </span>{" "}
+              from{" "}
+              <span className="font-semibold text-emerald-300">
+                {pendingDispositionChange.previousDisposition}
+              </span>{" "}
+              to{" "}
+              <span className="font-semibold text-emerald-300">
+                {pendingDispositionChange.nextDisposition}
+              </span>{" "}
+              in the database?
+            </p>
+          ) : null
+        }
+        confirmLabel="Confirm change"
+        cancelLabel="Cancel"
+        icon="question"
+        isLoading={
+          pendingDispositionChange
+            ? updatingDispositionId === pendingDispositionChange.leadId
+            : false
+        }
+        onConfirm={confirmDispositionChange}
+        onCancel={cancelDispositionChange}
+      />
 
       {viewingNote && (
         <NotesViewModal
@@ -1012,7 +1036,6 @@ function LeadTableRow({
   editNote,
   isUpdating,
   updatingDispositionId,
-  pendingDispositionChange,
   onEditNoteChange,
   onStartEditingNote,
   onCancelEditingNote,
@@ -1060,7 +1083,7 @@ function LeadTableRow({
           className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
           value={lead.disposition}
           onChange={(event) => onRequestDispositionChange(lead, event.target.value)}
-          disabled={updatingDispositionId === lead._id || Boolean(pendingDispositionChange)}
+          disabled={updatingDispositionId === lead._id}
           aria-label={`Disposition for ${lead.name}`}
         >
           {dispositions.map((disposition) => (
@@ -1368,53 +1391,6 @@ function FollowUpModal({ lead, form, isSaving, onChange, onSave, onClear, onClos
             className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save follow-up"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DispositionConfirmModal({
-  leadName,
-  previousDisposition,
-  nextDisposition,
-  isSaving,
-  onConfirm,
-  onCancel,
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
-      <div
-        className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/30"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="disposition-confirm-title"
-      >
-        <h3 className="text-lg font-bold text-white" id="disposition-confirm-title">
-          Change disposition?
-        </h3>
-        <p className="mt-3 text-sm text-slate-400">
-          Save the status change for <span className="font-semibold text-white">{leadName}</span>{" "}
-          from <span className="font-semibold text-emerald-300">{previousDisposition}</span> to{" "}
-          <span className="font-semibold text-emerald-300">{nextDisposition}</span> in the database?
-        </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isSaving}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isSaving}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSaving ? "Saving..." : "Confirm change"}
           </button>
         </div>
       </div>

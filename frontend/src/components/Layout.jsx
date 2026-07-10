@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, LogOut, PlusCircle, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import ConfirmModal from "./ConfirmModal.jsx";
 import FollowUpNotifier from "./FollowUpNotifier.jsx";
 
 const baseNavItems = [
@@ -11,21 +13,31 @@ const baseNavItems = [
 const adminNavItems = [
   { to: "/users/create", label: "Manage Users", icon: Users },
 ];
- 
+
 function Layout({ children, title, subtitle }) {
   const { user, logout, isAdmin } = useAuth();
   const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
   const navigate = useNavigate();
- 
-  const handleLogout = () => {
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
     logout();
     navigate("/login", { replace: true });
   };
- 
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="absolute inset-x-0 top-0 h-72 bg-linear-to-br from-emerald-600/30 via-emerald-700/10 to-transparent blur-3xl" />
- 
+
       <header className="relative z-10 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -35,7 +47,7 @@ function Layout({ children, title, subtitle }) {
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
           </div>
- 
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {user && (
               <p className="text-sm font-medium text-slate-400">
@@ -51,19 +63,19 @@ function Layout({ children, title, subtitle }) {
             <button
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-900"
               type="button"
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
             >
               <LogOut className="h-4 w-4" />
               Sign out
             </button>
           </div>
         </div>
- 
+
         <nav className="mx-auto max-w-7xl px-5 pb-4 sm:px-8">
           <div className="flex flex-wrap gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
- 
+
               return (
                 <NavLink
                   className={({ isActive }) =>
@@ -86,10 +98,22 @@ function Layout({ children, title, subtitle }) {
       </header>
 
       <FollowUpNotifier />
- 
+
       <main className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8">{children}</main>
+
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="Sign out?"
+        message="Are you sure you want to sign out of your account?"
+        confirmLabel="Sign out"
+        cancelLabel="Stay signed in"
+        confirmVariant="danger"
+        icon="logout"
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
     </div>
   );
 }
- 
+
 export default Layout;
