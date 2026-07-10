@@ -55,7 +55,7 @@ function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+      className="fixed inset-0 'z-9999' flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
       onClick={() => {
         if (!isLoading) {
           onCancel();

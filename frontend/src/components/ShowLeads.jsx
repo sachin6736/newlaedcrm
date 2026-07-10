@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Calendar,
   ChevronDown,
@@ -38,6 +39,16 @@ const PAGE_SIZE = 10;
 const NOTE_PREVIEW_LENGTH = 15;
 
 const YEAR_OPTIONS = getYearOptions();
+const MotionLink = motion.create(Link);
+
+const buttonTap = { scale: 0.97 };
+const buttonHover = { y: -1 };
+const fadeInUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.22, ease: "easeOut" },
+};
 
 function truncateNote(note, maxLength = NOTE_PREVIEW_LENGTH) {
   if (!note) {
@@ -658,7 +669,15 @@ function ShowLeads() {
       title="Created Leads"
       subtitle="Review customer enquiries, track dispositions, and manage your sales pipeline."
     >
-      <div className="grid gap-3 sm:grid-cols-3">
+      <motion.div
+        className="grid gap-3 sm:grid-cols-3"
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: {},
+          show: { transition: { staggerChildren: 0.08 } },
+        }}
+      >
         <StatCard
           icon={ClipboardList}
           label={hasActiveFilters ? "Filtered leads" : "Total leads"}
@@ -666,21 +685,34 @@ function ShowLeads() {
         />
         <StatCard icon={Sparkles} label="Quoted" value={leadStats.quoted} />
         <StatCard icon={ShoppingBag} label="Ordered" value={leadStats.ordered} />
-      </div>
+      </motion.div>
 
-      {error && (
-        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
-          {error}
-        </div>
-      )}
+      <AnimatePresence mode="popLayout">
+        {error && (
+          <motion.div
+            key="lead-error"
+            {...fadeInUp}
+            className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+          >
+            {error}
+          </motion.div>
+        )}
 
-      {success && (
-        <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300">
-          {success}
-        </div>
-      )}
+        {success && (
+          <motion.div
+            key="lead-success"
+            {...fadeInUp}
+            className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300"
+          >
+            {success}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur">
+      <motion.div
+        {...fadeInUp}
+        className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur"
+      >
         <div className="border-b border-slate-800 px-5 py-5 sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -692,12 +724,14 @@ function ShowLeads() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => setFiltersExpanded((current) => !current)}
                 aria-expanded={filtersExpanded}
                 aria-controls="lead-filters-panel"
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-4 text-sm font-semibold text-slate-300 transition hover:border-emerald-500/40 hover:bg-slate-800 hover:text-white"
+                whileHover={buttonHover}
+                whileTap={buttonTap}
               >
                 <SlidersHorizontal className="h-4 w-4 text-emerald-300" />
                 Search & filters
@@ -711,14 +745,16 @@ function ShowLeads() {
                 ) : (
                   <ChevronDown className="h-4 w-4 text-slate-400" />
                 )}
-              </button>
-              <Link
+              </motion.button>
+              <MotionLink
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
                 to="/leads/create"
+                whileHover={buttonHover}
+                whileTap={buttonTap}
               >
                 <PlusCircle className="h-4 w-4" />
                 Create Lead
-              </Link>
+              </MotionLink>
             </div>
           </div>
 
@@ -728,13 +764,15 @@ function ShowLeads() {
                 <span className="font-semibold text-emerald-300">Filters applied.</span>{" "}
                 {pageSummary}
               </p>
-              <button
+              <motion.button
                 className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 px-4 text-xs font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
                 type="button"
                 onClick={handleClearFilters}
+                whileHover={buttonHover}
+                whileTap={buttonTap}
               >
                 Clear filters
-              </button>
+              </motion.button>
             </div>
           )}
 
@@ -759,13 +797,15 @@ function ShowLeads() {
                     onChange={(event) => setSearchInput(event.target.value)}
                     placeholder={SEARCH_PLACEHOLDER}
                   />
-                  <button
+                  <motion.button
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
                     type="submit"
+                    whileHover={buttonHover}
+                    whileTap={buttonTap}
                   >
                     <Search className="h-4 w-4" />
                     Search
-                  </button>
+                  </motion.button>
                 </div>
               </label>
               <p className="text-xs text-slate-500">
@@ -849,13 +889,15 @@ function ShowLeads() {
             </label>
 
                 {hasActiveFilters && (
-                  <button
+                  <motion.button
                     className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
                     type="button"
                     onClick={handleClearFilters}
+                    whileHover={buttonHover}
+                    whileTap={buttonTap}
                   >
                     Clear filters
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </div>
@@ -872,10 +914,11 @@ function ShowLeads() {
           />
         )}
 
-        {loading ? (
-          <div className="p-10 text-center text-slate-400">Loading leads...</div>
+        <AnimatePresence mode="wait">
+          {loading ? (
+          <LeadTableLoading key="lead-table-loading" isAdmin={isAdmin} />
         ) : leads.length === 0 ? (
-          <div className="p-12 text-center">
+          <motion.div key="lead-empty" {...fadeInUp} className="p-12 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
               <ClipboardList className="h-7 w-7" />
             </div>
@@ -888,25 +931,29 @@ function ShowLeads() {
                 : "Create your first lead to start building your pipeline."}
             </p>
             {hasActiveFilters ? (
-              <button
+              <motion.button
                 className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
                 type="button"
                 onClick={handleClearFilters}
+                whileHover={buttonHover}
+                whileTap={buttonTap}
               >
                 Clear filters
-              </button>
+              </motion.button>
             ) : (
-              <Link
+              <MotionLink
                 className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
                 to="/leads/create"
+                whileHover={buttonHover}
+                whileTap={buttonTap}
               >
                 <PlusCircle className="h-4 w-4" />
                 Create Lead
-              </Link>
+              </MotionLink>
             )}
-          </div>
+          </motion.div>
         ) : (
-          <>
+          <motion.div key="lead-table" {...fadeInUp}>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-800">
                 <thead className="bg-slate-900/90">
@@ -934,10 +981,11 @@ function ShowLeads() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
-                  {leads.map((lead) => (
+                  {leads.map((lead, index) => (
                     <LeadTableRow
                       key={lead._id}
                       lead={lead}
+                      index={index}
                       isAdmin={isAdmin}
                       isOwnLead={
                         !isAdmin &&
@@ -967,9 +1015,10 @@ function ShowLeads() {
               onNewer={() => goToPage(page - 1)}
               onOlder={() => goToPage(page + 1)}
             />
-          </>
+          </motion.div>
         )}
-      </div>
+        </AnimatePresence>
+      </motion.div>
 
       <ConfirmModal
         open={Boolean(pendingDispositionChange)}
@@ -1005,31 +1054,97 @@ function ShowLeads() {
         onCancel={cancelDispositionChange}
       />
 
-      {viewingNote && (
-        <NotesViewModal
-          leadName={viewingNote.leadName}
-          notes={viewingNote.notes}
-          onClose={closeNoteViewer}
-        />
-      )}
+      <AnimatePresence>
+        {viewingNote && (
+          <NotesViewModal
+            leadName={viewingNote.leadName}
+            notes={viewingNote.notes}
+            onClose={closeNoteViewer}
+          />
+        )}
+      </AnimatePresence>
 
-      {followUpLead && (
-        <FollowUpModal
-          lead={followUpLead}
-          form={followUpForm}
-          isSaving={savingFollowUp}
-          onChange={setFollowUpForm}
-          onSave={saveFollowUp}
-          onClear={clearFollowUp}
-          onClose={closeFollowUpModal}
-        />
-      )}
+      <AnimatePresence>
+        {followUpLead && (
+          <FollowUpModal
+            lead={followUpLead}
+            form={followUpForm}
+            isSaving={savingFollowUp}
+            onChange={setFollowUpForm}
+            onSave={saveFollowUp}
+            onClear={clearFollowUp}
+            onClose={closeFollowUpModal}
+          />
+        )}
+      </AnimatePresence>
     </Layout>
+  );
+}
+
+function LeadTableLoading({ isAdmin }) {
+  const columns = [
+    "Lead",
+    ...(isAdmin ? ["Assigned To"] : []),
+    "Phone",
+    "Zip",
+    "Make",
+    "Model",
+    "Year",
+    "Part",
+    "Disposition",
+    "Follow-up",
+    "Notes",
+  ];
+
+  return (
+    <motion.div key="lead-table-loading" {...fadeInUp} className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-slate-800">
+        <thead className="bg-slate-900/90">
+          <tr>
+            {columns.map((heading) => (
+              <th
+                className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
+                key={heading}
+              >
+                {heading}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/80">
+          {Array.from({ length: 6 }).map((_, rowIndex) => (
+            <motion.tr
+              key={rowIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, delay: rowIndex * 0.04 }}
+            >
+              {columns.map((column, columnIndex) => (
+                <td className="px-4 py-4" key={column}>
+                  <motion.div
+                    className={`h-3 rounded-full bg-slate-700/70 ${
+                      columnIndex === 0 ? "w-36" : columnIndex > 7 ? "w-24" : "w-20"
+                    }`}
+                    animate={{ opacity: [0.35, 0.9, 0.35] }}
+                    transition={{
+                      duration: 1.1,
+                      repeat: Infinity,
+                      delay: (rowIndex + columnIndex) * 0.03,
+                    }}
+                  />
+                </td>
+              ))}
+            </motion.tr>
+          ))}
+        </tbody>
+      </table>
+    </motion.div>
   );
 }
 
 function LeadTableRow({
   lead,
+  index,
   isAdmin,
   isOwnLead,
   editingLeadId,
@@ -1050,7 +1165,14 @@ function LeadTableRow({
     : "transition hover:bg-slate-800/40";
 
   return (
-    <tr className={rowClassName}>
+    <motion.tr
+      className={rowClassName}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.18) }}
+      layout
+    >
       <td className="px-4 py-3">
         <div className="flex min-w-[10rem] items-center gap-2">
           {isOwnLead && (
@@ -1111,14 +1233,16 @@ function LeadTableRow({
         ) : (
           <span className="text-slate-500">Not scheduled</span>
         )}
-        <button
+        <motion.button
           type="button"
           onClick={() => onOpenFollowUp(lead)}
           className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
+          whileHover={buttonHover}
+          whileTap={buttonTap}
         >
           <Bell className="h-3.5 w-3.5" />
           {lead.followUpAt ? "Edit" : "Schedule"}
-        </button>
+        </motion.button>
       </td>
       <td className="w-36 max-w-[9rem] px-4 py-3 text-sm text-slate-400">
         {editingLeadId === lead._id ? (
@@ -1132,22 +1256,26 @@ function LeadTableRow({
               rows={2}
             />
             <div className="flex items-center gap-2">
-              <button
+              <motion.button
                 type="button"
                 onClick={() => onSaveNote(lead._id)}
                 disabled={isUpdating}
                 className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                whileHover={isUpdating ? undefined : buttonHover}
+                whileTap={isUpdating ? undefined : buttonTap}
               >
                 {isUpdating ? "Saving..." : "Save"}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 type="button"
                 onClick={onCancelEditingNote}
                 disabled={isUpdating}
                 className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                whileHover={isUpdating ? undefined : buttonHover}
+                whileTap={isUpdating ? undefined : buttonTap}
               >
                 Cancel
-              </button>
+              </motion.button>
             </div>
           </div>
         ) : (
@@ -1155,11 +1283,12 @@ function LeadTableRow({
             <div className="min-w-0 flex-1">
               {lead.notes ? (
                 isNoteTruncated(lead.notes) ? (
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => onViewNote(lead)}
                     className="group w-full text-left"
                     aria-label={`View full note for ${lead.name}`}
+                    whileTap={buttonTap}
                   >
                     <span className="block truncate font-medium text-slate-300">
                       {truncateNote(lead.notes)}
@@ -1168,7 +1297,7 @@ function LeadTableRow({
                     <span className="mt-1 block text-xs font-semibold text-emerald-400/80 transition group-hover:text-emerald-300">
                       View full note
                     </span>
-                  </button>
+                  </motion.button>
                 ) : (
                   <span className="block truncate text-slate-300">{lead.notes}</span>
                 )
@@ -1176,19 +1305,21 @@ function LeadTableRow({
                 <span className="block text-slate-500">No notes</span>
               )}
             </div>
-            <button
+            <motion.button
               type="button"
               onClick={() => onStartEditingNote(lead)}
               className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
               title="Edit note"
               aria-label="Edit note"
+              whileHover={buttonHover}
+              whileTap={buttonTap}
             >
               <Pencil className="h-3.5 w-3.5" />
-            </button>
+            </motion.button>
           </div>
         )}
       </td>
-    </tr>
+    </motion.tr>
   );
 }
 
@@ -1197,27 +1328,31 @@ function PaginationControls({ className, pageSummary, pagination, onNewer, onOld
     <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}>
       <p className="text-sm font-medium text-slate-400">{pageSummary}</p>
       <div className="flex flex-wrap items-center gap-3">
-        <button
+        <motion.button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45"
           type="button"
           onClick={onNewer}
           disabled={!pagination.hasPreviousPage}
+          whileHover={pagination.hasPreviousPage ? buttonHover : undefined}
+          whileTap={pagination.hasPreviousPage ? buttonTap : undefined}
         >
           <ChevronLeft className="h-4 w-4" />
           Newer
-        </button>
+        </motion.button>
         <span className="min-w-20 text-center text-sm font-semibold text-slate-400">
           Page {pagination.page} of {pagination.totalPages}
         </span>
-        <button
+        <motion.button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-45"
           type="button"
           onClick={onOlder}
           disabled={!pagination.hasNextPage}
+          whileHover={pagination.hasNextPage ? buttonHover : undefined}
+          whileTap={pagination.hasNextPage ? buttonTap : undefined}
         >
           Older
           <ChevronRight className="h-4 w-4" />
-        </button>
+        </motion.button>
       </div>
     </div>
   );
@@ -1238,11 +1373,18 @@ function NotesViewModal({ leadName, notes, onClose }) {
   }, [onClose]);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/30"
         role="dialog"
         aria-modal="true"
@@ -1261,14 +1403,16 @@ function NotesViewModal({ leadName, notes, onClose }) {
             </div>
             <p className="mt-2 truncate text-sm text-slate-400">{leadName}</p>
           </div>
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
             aria-label="Close notes"
+            whileHover={buttonHover}
+            whileTap={buttonTap}
           >
             <X className="h-4 w-4" />
-          </button>
+          </motion.button>
         </div>
 
         <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-6 py-5">
@@ -1278,16 +1422,18 @@ function NotesViewModal({ leadName, notes, onClose }) {
         </div>
 
         <div className="flex justify-end border-t border-slate-800 px-6 py-4">
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
+            whileHover={buttonHover}
+            whileTap={buttonTap}
           >
             Close
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -1307,11 +1453,18 @@ function FollowUpModal({ lead, form, isSaving, onChange, onSave, onClear, onClos
   }, [isSaving, onClose]);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/30"
         role="dialog"
         aria-modal="true"
@@ -1367,40 +1520,53 @@ function FollowUpModal({ lead, form, isSaving, onChange, onSave, onClear, onClos
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
           {lead.followUpAt && (
-            <button
+            <motion.button
               type="button"
               onClick={onClear}
               disabled={isSaving}
               className="inline-flex h-11 items-center justify-center rounded-xl border border-red-500/30 px-5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+              whileHover={isSaving ? undefined : buttonHover}
+              whileTap={isSaving ? undefined : buttonTap}
             >
               Clear follow-up
-            </button>
+            </motion.button>
           )}
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
             disabled={isSaving}
             className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            whileHover={isSaving ? undefined : buttonHover}
+            whileTap={isSaving ? undefined : buttonTap}
           >
             Cancel
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={onSave}
             disabled={isSaving}
             className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            whileHover={isSaving ? undefined : buttonHover}
+            whileTap={isSaving ? undefined : buttonTap}
           >
             {isSaving ? "Saving..." : "Save follow-up"}
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
 function StatCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur">
+    <motion.div
+      className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur"
+      variants={{
+        hidden: { opacity: 0, y: 10 },
+        show: { opacity: 1, y: 0 },
+      }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
           <Icon className="h-4 w-4" strokeWidth={2} />
@@ -1410,7 +1576,7 @@ function StatCard({ icon: Icon, label, value }) {
           <p className="text-xl font-bold leading-tight text-white">{value}</p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
