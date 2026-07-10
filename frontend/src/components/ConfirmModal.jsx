@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, HelpCircle, LogOut } from "lucide-react";
 
@@ -8,9 +8,13 @@ const ICONS = {
   logout: LogOut,
 };
 
+/** Keep the modal mounted long enough for the exit animation to finish. */
+const ANIMATION_MS = 200;
+
 /**
  * Reusable confirmation modal rendered into document.body so it always
  * appears above page chrome (header, stacking contexts, etc.).
+ * Includes enter/exit fade + scale transitions.
  */
 function ConfirmModal({
   open,
@@ -24,8 +28,27 @@ function ConfirmModal({
   onConfirm,
   onCancel,
 }) {
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
+
+  // Mount when open; unmount after exit animation when closed.
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setMounted(true);
+      // Double rAF so the browser paints the "from" styles before transitioning.
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    setVisible(false);
+    const timeoutId = window.setTimeout(() => setMounted(false), ANIMATION_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [open]);
+
+  useEffect(() => {
+    if (!mounted) {
       return undefined;
     }
 
@@ -33,7 +56,7 @@ function ConfirmModal({
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape" && !isLoading) {
+      if (event.key === "Escape" && !isLoading && open) {
         onCancel();
       }
     };
@@ -44,9 +67,9 @@ function ConfirmModal({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, isLoading, onCancel]);
+  }, [mounted, open, isLoading, onCancel]);
 
-  if (!open || typeof document === "undefined") {
+  if (!mounted || typeof document === "undefined") {
     return null;
   }
 
@@ -55,16 +78,24 @@ function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm"
+      className={`fixed inset-0 z-[9999] flex items-center justify-center px-4 transition-all duration-200 ease-out ${
+        visible
+          ? "bg-slate-950/70 opacity-100 backdrop-blur-sm"
+          : "bg-slate-950/0 opacity-0 backdrop-blur-none"
+      }`}
       onClick={() => {
-        if (!isLoading) {
+        if (!isLoading && open) {
           onCancel();
         }
       }}
       role="presentation"
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40"
+        className={`w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40 transition-all duration-200 ease-out ${
+          visible
+            ? "translate-y-0 scale-100 opacity-100"
+            : "translate-y-3 scale-95 opacity-0"
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
@@ -72,11 +103,11 @@ function ConfirmModal({
       >
         <div className="flex items-start gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 ease-out ${
               isDanger
                 ? "bg-red-500/15 text-red-300"
                 : "bg-emerald-500/15 text-emerald-300"
-            }`}
+            } ${visible ? "scale-100" : "scale-75"}`}
           >
             <Icon className="h-5 w-5" />
           </div>
