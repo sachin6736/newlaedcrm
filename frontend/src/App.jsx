@@ -1,6 +1,7 @@
 ﻿import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { AnimatePresence } from "motion/react";
+import { Toaster } from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import Login from "./components/login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -73,6 +74,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster />
         <NewLeadNotifier />
         <AppRoutes />
       </BrowserRouter>

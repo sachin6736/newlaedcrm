@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Bell, X } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiUrl } from "../config/api.js";
 
@@ -43,24 +44,30 @@ function FollowUpNotifier() {
       const leads = result.data || [];
       setDueFollowUps(leads);
 
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        leads.forEach((lead) => {
-          if (notifiedIdsRef.current.has(lead._id)) {
-            return;
+      leads.forEach((lead) => {
+        if (notifiedIdsRef.current.has(lead._id)) {
+          return;
+        }
+
+        notifiedIdsRef.current.add(lead._id);
+
+        const description = lead.followUpNote
+          ? `${lead.followUpNote} (${formatFollowUpDate(lead.followUpAt)})`
+          : `Scheduled for ${formatFollowUpDate(lead.followUpAt)}`;
+
+        toast(
+          <div>
+            <p>Follow-up due: {lead.name}</p>
+            <p className="mt-1 text-xs text-slate-500">{description}</p>
+          </div>,
+          {
+            id: `followup-${lead._id}`,
+            duration: 10000,
+            position: "top-right",
+            icon: "🔔",
           }
-
-          notifiedIdsRef.current.add(lead._id);
-
-          const body = lead.followUpNote
-            ? `${lead.followUpNote} (${formatFollowUpDate(lead.followUpAt)})`
-            : `Scheduled for ${formatFollowUpDate(lead.followUpAt)}`;
-
-          new Notification(`Follow-up: ${lead.name}`, {
-            body,
-            tag: `followup-${lead._id}`,
-          });
-        });
-      }
+        );
+      });
     } catch {
       // Ignore polling errors; the next interval will retry.
     }
@@ -69,10 +76,6 @@ function FollowUpNotifier() {
   useEffect(() => {
     if (!isAuthenticated) {
       return undefined;
-    }
-
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      Notification.requestPermission();
     }
 
     const initialFetchId = window.setTimeout(fetchDueFollowUps, 0);
