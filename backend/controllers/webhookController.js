@@ -1,6 +1,7 @@
 import Lead from "../models/Lead.js";
 import { getNextAssignee } from "../utils/assignLead.js";
 import { normalizeVehicleFields } from "../utils/vehicleFields.js";
+import { emitLeadCreated } from "../utils/leadEvents.js";
 
 const EXTERNAL_SOURCES = ["website", "facebook", "other"];
 
@@ -57,6 +58,8 @@ export const createExternalLead = async (req, res) => {
     });
 
     const populatedLead = await populateLeadFields(Lead.findById(lead._id));
+
+    emitLeadCreated(populatedLead);
 
     res.status(201).json({ success: true, data: populatedLead });
   } catch (error) {

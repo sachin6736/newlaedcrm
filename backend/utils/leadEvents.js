@@ -1,14 +1,21 @@
-import { EventEmitter } from "events";
+let io;
 
-const leadEvents = new EventEmitter();
-// Many concurrent SSE clients are expected in multi-user CRM use.
-leadEvents.setMaxListeners(0);
-
-export const emitLeadCreated = (lead) => {
-  leadEvents.emit("lead:created", lead);
+export const setSocketServer = (socketServer) => {
+  io = socketServer;
 };
 
-export const onLeadCreated = (listener) => {
-  leadEvents.on("lead:created", listener);
-  return () => leadEvents.off("lead:created", listener);
+/** Send a new-lead alert only to the assignee and CRM administrators. */
+export const emitLeadCreated = (lead) => {
+  if (!io) {
+    return;
+  }
+
+  const payload = lead.toObject ? lead.toObject() : lead;
+  const assigneeId = payload.assignedTo?._id ?? payload.assignedTo;
+
+  if (assigneeId) {
+    io.to(`user:${assigneeId}`).emit("lead:created", payload);
+  }
+
+  io.to("admins").emit("lead:created", payload);
 };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles, X } from "lucide-react";
+import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiUrl } from "../config/api.js";
 
@@ -133,49 +134,17 @@ function NewLeadNotifier() {
       Notification.requestPermission();
     }
 
-    let closed = false;
-    let reconnectTimer = null;
-    let source = null;
+    const socket = io(apiUrl(""), {
+      auth: { token },
+      transports: ["websocket"],
+    });
 
-    const connect = () => {
-      if (closed) {
-        return;
-      }
-
-      const url = `${apiUrl("/api/leads/events")}?token=${encodeURIComponent(token)}`;
-      source = new EventSource(url);
-
-      source.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-
-          if (payload.type === "lead:created" && payload.data) {
-            pushToast(payload.data);
-          }
-        } catch {
-          // Ignore malformed payloads.
-        }
-      };
-
-      source.onerror = () => {
-        source?.close();
-        source = null;
-
-        // Auth failures / network drops: retry shortly.
-        if (!closed) {
-          reconnectTimer = window.setTimeout(connect, 4000);
-        }
-      };
-    };
-
-    connect();
+    socket.on("lead:created", (lead) => {
+      pushToast(lead);
+    });
 
     return () => {
-      closed = true;
-      if (reconnectTimer) {
-        window.clearTimeout(reconnectTimer);
-      }
-      source?.close();
+      socket.disconnect();
       timersRef.current.forEach((timerId) => window.clearTimeout(timerId));
       timersRef.current.clear();
     };
