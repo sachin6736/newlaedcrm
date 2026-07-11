@@ -1,5 +1,7 @@
 ﻿import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import { AnimatePresence } from "motion/react";
+import { useLocation } from "react-router-dom";
 import Login from "./components/login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ShowLeads from "./components/ShowLeads.jsx";
@@ -18,8 +20,11 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
+  const location = useLocation();
+
   return (
-    <Routes>
+    <AnimatePresence mode="wait">
+    <Routes location={location} key={location.pathname}>
       <Route
         path="/login"
         element={
@@ -59,6 +64,7 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/leads" replace />} />
       <Route path="*" element={<Navigate to="/leads" replace />} />
     </Routes>
+    </AnimatePresence>
   );
 }
 

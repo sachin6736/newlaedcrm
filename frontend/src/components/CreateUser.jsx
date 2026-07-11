@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, PauseCircle, PlayCircle, Shield, UserPlus, Users } from "lucide-react";
 import Layout from "./Layout.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -12,6 +13,16 @@ const initialUserForm = {
   email: "",
   password: "",
   role: "user",
+};
+
+const MotionLink = motion.create(Link);
+const buttonTap = { scale: 0.97 };
+const buttonHover = { y: -1 };
+const fadeInUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.22, ease: "easeOut" },
 };
 
 function CreateUser() {
@@ -139,17 +150,31 @@ function CreateUser() {
       title="Manage Users"
       subtitle="Create team accounts, assign roles, and pause automatic lead assignment when a user is unavailable."
     >
-      <div className="mx-auto max-w-5xl">
-        <Link
+      <motion.div className="mx-auto max-w-5xl" {...fadeInUp}>
+        <MotionLink
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
           to="/leads"
+          whileHover={buttonHover}
+          whileTap={buttonTap}
         >
           <ArrowLeft className="h-4 w-4" />
           Back to all leads
-        </Link>
+        </MotionLink>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8">
+        <motion.div
+          className="mt-6 grid gap-6 lg:grid-cols-2"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+        >
+          <motion.div
+            className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8"
+            variants={{
+              hidden: { opacity: 0, y: 14 },
+              show: { opacity: 1, y: 0 },
+            }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
                 <UserPlus className="h-6 w-6" />
@@ -162,17 +187,25 @@ function CreateUser() {
               </div>
             </div>
 
-            {error && (
-              <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
-                {error}
-              </div>
-            )}
+            <AnimatePresence mode="popLayout">
+              {error && (
+                <motion.div
+                  className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+                  {...fadeInUp}
+                >
+                  {error}
+                </motion.div>
+              )}
 
-            {success && (
-              <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300">
-                {success}
-              </div>
-            )}
+              {success && (
+                <motion.div
+                  className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300"
+                  {...fadeInUp}
+                >
+                  {success}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
               <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
@@ -228,17 +261,26 @@ function CreateUser() {
                 </select>
               </label>
 
-              <button
+              <motion.button
                 className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-500 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 disabled:cursor-not-allowed disabled:bg-emerald-500/50"
                 type="submit"
                 disabled={submitting}
+                whileHover={submitting ? undefined : buttonHover}
+                whileTap={submitting ? undefined : buttonTap}
               >
                 {submitting ? "Creating..." : "Create user"}
-              </button>
+              </motion.button>
             </form>
-          </div>
+          </motion.div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8">
+          <motion.div
+            className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8"
+            variants={{
+              hidden: { opacity: 0, y: 14 },
+              show: { opacity: 1, y: 0 },
+            }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
                 <Users className="h-6 w-6" />
@@ -253,14 +295,20 @@ function CreateUser() {
 
             <div className="mt-6 space-y-3">
               {loadingUsers ? (
-                <p className="text-sm text-slate-400">Loading users...</p>
+                <UsersLoadingList />
               ) : users.length === 0 ? (
-                <p className="text-sm text-slate-400">No users yet.</p>
+                <motion.p className="text-sm text-slate-400" {...fadeInUp}>
+                  No users yet.
+                </motion.p>
               ) : (
-                users.map((teamUser) => (
-                  <div
+                users.map((teamUser, index) => (
+                  <motion.div
                     key={teamUser._id || teamUser.id}
                     className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, delay: Math.min(index * 0.035, 0.2) }}
+                    layout
                   >
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-white">{teamUser.name}</p>
@@ -279,7 +327,7 @@ function CreateUser() {
                       </span>
 
                       {teamUser.role === "user" && (
-                        <button
+                        <motion.button
                           type="button"
                           onClick={() => handleToggleLeadAssignment(teamUser)}
                           disabled={updatingAssignmentUserId === (teamUser._id || teamUser.id)}
@@ -292,6 +340,16 @@ function CreateUser() {
                           aria-label={`${
                             teamUser.leadAssignmentEnabled === false ? "Resume" : "Pause"
                           } lead assignment for ${teamUser.name}`}
+                          whileHover={
+                            updatingAssignmentUserId === (teamUser._id || teamUser.id)
+                              ? undefined
+                              : buttonHover
+                          }
+                          whileTap={
+                            updatingAssignmentUserId === (teamUser._id || teamUser.id)
+                              ? undefined
+                              : buttonTap
+                          }
                         >
                           {teamUser.leadAssignmentEnabled === false ? (
                             <PlayCircle className="h-4 w-4" />
@@ -299,17 +357,44 @@ function CreateUser() {
                             <PauseCircle className="h-4 w-4" />
                           )}
                           {teamUser.leadAssignmentEnabled === false ? "Paused" : "Receiving leads"}
-                        </button>
+                        </motion.button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               )}
             </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
     </Layout>
+  );
+}
+
+function UsersLoadingList() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <motion.div
+          key={index}
+          className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, delay: index * 0.04 }}
+        >
+          <motion.div
+            className="h-4 w-40 rounded-full bg-slate-700/70"
+            animate={{ opacity: [0.35, 0.9, 0.35] }}
+            transition={{ duration: 1.1, repeat: Infinity, delay: index * 0.08 }}
+          />
+          <motion.div
+            className="mt-3 h-3 w-56 max-w-full rounded-full bg-slate-800"
+            animate={{ opacity: [0.25, 0.75, 0.25] }}
+            transition={{ duration: 1.1, repeat: Infinity, delay: index * 0.08 + 0.08 }}
+          />
+        </motion.div>
+      ))}
+    </div>
   );
 }
 

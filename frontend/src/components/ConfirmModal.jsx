@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, HelpCircle, LogOut } from "lucide-react";
 
 const ICONS = {
@@ -46,7 +47,7 @@ function ConfirmModal({
     };
   }, [open, isLoading, onCancel]);
 
-  if (!open || typeof document === "undefined") {
+  if (typeof document === "undefined") {
     return null;
   }
 
@@ -54,22 +55,31 @@ function ConfirmModal({
   const isDanger = confirmVariant === "danger";
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
-      onClick={() => {
-        if (!isLoading) {
-          onCancel();
-        }
-      }}
-      role="presentation"
-    >
-      <div
-        className="max-h-[calc(100vh-3rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
+          onClick={() => {
+            if (!isLoading) {
+              onCancel();
+            }
+          }}
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="max-h-[calc(100vh-3rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/40"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-modal-title"
+            onClick={(event) => event.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 16 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
         <div className="flex items-start gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
@@ -93,15 +103,17 @@ function ConfirmModal({
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <button
+          <motion.button
             type="button"
             onClick={onCancel}
             disabled={isLoading}
             className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            whileHover={isLoading ? undefined : { y: -1 }}
+            whileTap={isLoading ? undefined : { scale: 0.97 }}
           >
             {cancelLabel}
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
@@ -110,12 +122,16 @@ function ConfirmModal({
                 ? "bg-red-500 text-white hover:bg-red-400"
                 : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
             }`}
+            whileHover={isLoading ? undefined : { y: -1 }}
+            whileTap={isLoading ? undefined : { scale: 0.97 }}
           >
             {isLoading ? "Please wait..." : confirmLabel}
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>,
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 }

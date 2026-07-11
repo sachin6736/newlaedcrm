@@ -1,9 +1,20 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import Layout from "./Layout.jsx";
 import { API_URL, dispositions, initialLeadForm } from "../constants/leads.js";
 import { useAuth } from "../context/AuthContext.jsx";
+
+const MotionLink = motion.create(Link);
+const buttonTap = { scale: 0.97 };
+const buttonHover = { y: -1 };
+const fadeInUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.22, ease: "easeOut" },
+};
  
 function CreateLead() {
   const { authHeaders, logout, isAdmin } = useAuth();
@@ -68,16 +79,24 @@ function CreateLead() {
           : "This lead will be assigned to you automatically."
       }
     >
-      <div className="mx-auto max-w-3xl">
-        <Link
+      <motion.div className="mx-auto max-w-3xl" {...fadeInUp}>
+        <MotionLink
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
           to="/leads"
+          whileHover={buttonHover}
+          whileTap={buttonTap}
         >
           <ArrowLeft className="h-4 w-4" />
           Back to all leads
-        </Link>
+        </MotionLink>
  
-        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8">
+        <motion.div
+          className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8"
+          initial={{ opacity: 0, scale: 0.98, y: 14 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98, y: -10 }}
+          transition={{ duration: 0.24, ease: "easeOut" }}
+        >
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
               <UserPlus className="h-6 w-6" />
@@ -92,20 +111,33 @@ function CreateLead() {
             </div>
           </div>
  
-          {error && (
-            <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
-              {error}
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {error && (
+              <motion.div
+                className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+                {...fadeInUp}
+              >
+                {error}
+              </motion.div>
+            )}
  
-          {success && (
-            <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300">
-              {success}
-            </div>
-          )}
+            {success && (
+              <motion.div
+                className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300"
+                {...fadeInUp}
+              >
+                {success}
+              </motion.div>
+            )}
+          </AnimatePresence>
  
           <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-            <div className="grid gap-5 md:grid-cols-2">
+            <motion.div
+              className="grid gap-5 md:grid-cols-2"
+              initial="hidden"
+              animate="show"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.035 } } }}
+            >
               <Field
                 label="Name"
                 name="name"
@@ -196,33 +228,44 @@ function CreateLead() {
                   placeholder="Add follow-up details or context"
                 />
               </label>
-            </div>
+            </motion.div>
  
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
-              <Link
+              <MotionLink
                 className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-900"
                 to="/leads"
+                whileHover={buttonHover}
+                whileTap={buttonTap}
               >
                 Cancel
-              </Link>
-              <button
+              </MotionLink>
+              <motion.button
                 className="inline-flex h-12 items-center justify-center rounded-xl bg-emerald-500 px-6 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 disabled:cursor-not-allowed disabled:bg-emerald-500/50"
                 type="submit"
                 disabled={submitting}
+                whileHover={submitting ? undefined : buttonHover}
+                whileTap={submitting ? undefined : buttonTap}
               >
                 {submitting ? "Saving lead..." : "Submit Lead"}
-              </button>
+              </motion.button>
             </div>
           </form>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </Layout>
   );
 }
  
 function Field({ label, name, type = "text", value, onChange, placeholder, required = false }) {
   return (
-    <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+    <motion.label
+      className="flex flex-col gap-2 text-sm font-semibold text-slate-300"
+      variants={{
+        hidden: { opacity: 0, y: 8 },
+        show: { opacity: 1, y: 0 },
+      }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+    >
       {label}
       <input
         className="h-12 rounded-xl border border-slate-700 bg-slate-950 px-4 text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
@@ -233,7 +276,7 @@ function Field({ label, name, type = "text", value, onChange, placeholder, requi
         placeholder={placeholder}
         required={required}
       />
-    </label>
+    </motion.label>
   );
 }
  

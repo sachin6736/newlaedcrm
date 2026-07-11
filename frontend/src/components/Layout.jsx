@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 import { LayoutDashboard, LogOut, PlusCircle, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import ConfirmModal from "./ConfirmModal.jsx";
@@ -13,6 +14,10 @@ const baseNavItems = [
 const adminNavItems = [
   { to: "/users/create", label: "Manage Users", icon: Users },
 ];
+
+const MotionNavLink = motion.create(NavLink);
+const buttonTap = { scale: 0.97 };
+const buttonHover = { y: -1 };
 
 function Layout({ children, title, subtitle }) {
   const { user, logout, isAdmin } = useAuth();
@@ -38,7 +43,12 @@ function Layout({ children, title, subtitle }) {
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="absolute inset-x-0 top-0 h-72 bg-linear-to-br from-emerald-600/30 via-emerald-700/10 to-transparent blur-3xl" />
 
-      <header className="relative z-10 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur">
+      <motion.header
+        className="relative z-10 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: "easeOut" }}
+      >
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
@@ -60,14 +70,16 @@ function Layout({ children, title, subtitle }) {
                 )}
               </p>
             )}
-            <button
+            <motion.button
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-900"
               type="button"
               onClick={handleLogoutClick}
+              whileHover={buttonHover}
+              whileTap={buttonTap}
             >
               <LogOut className="h-4 w-4" />
               Sign out
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -77,7 +89,7 @@ function Layout({ children, title, subtitle }) {
               const Icon = item.icon;
 
               return (
-                <NavLink
+                <MotionNavLink
                   className={({ isActive }) =>
                     `inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
                       isActive
@@ -87,19 +99,29 @@ function Layout({ children, title, subtitle }) {
                   }
                   key={item.to}
                   to={item.to}
+                  whileHover={buttonHover}
+                  whileTap={buttonTap}
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
-                </NavLink>
+                </MotionNavLink>
               );
             })}
           </div>
         </nav>
-      </header>
+      </motion.header>
 
       <FollowUpNotifier />
 
-      <main className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8">{children}</main>
+      <motion.main
+        className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-8"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
+        {children}
+      </motion.main>
 
       <ConfirmModal
         open={showLogoutConfirm}

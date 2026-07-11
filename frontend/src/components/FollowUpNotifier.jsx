@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Bell, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiUrl } from "../config/api.js";
@@ -74,10 +75,13 @@ function FollowUpNotifier() {
       Notification.requestPermission();
     }
 
-    fetchDueFollowUps();
+    const initialFetchId = window.setTimeout(fetchDueFollowUps, 0);
     const intervalId = window.setInterval(fetchDueFollowUps, POLL_INTERVAL_MS);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearTimeout(initialFetchId);
+      window.clearInterval(intervalId);
+    };
   }, [fetchDueFollowUps, isAuthenticated]);
 
   const dismissFollowUp = async (leadId) => {
@@ -108,12 +112,20 @@ function FollowUpNotifier() {
     }
   };
 
-  if (!isAuthenticated || dueFollowUps.length === 0) {
+  if (!isAuthenticated) {
     return null;
   }
 
   return (
-    <div className="relative z-20 border-b border-amber-500/30 bg-amber-500/10 backdrop-blur">
+    <AnimatePresence>
+      {dueFollowUps.length > 0 && (
+        <motion.div
+          className="relative z-20 border-b border-amber-500/30 bg-amber-500/10 backdrop-blur"
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.24, ease: "easeOut" }}
+        >
       <div className="mx-auto max-w-7xl px-5 py-4 sm:px-8">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-300">
@@ -126,10 +138,15 @@ function FollowUpNotifier() {
                 : `${dueFollowUps.length} follow-ups are due now`}
             </p>
             <div className="mt-3 space-y-2">
-              {dueFollowUps.map((lead) => (
-                <div
+              {dueFollowUps.map((lead, index) => (
+                <motion.div
                   key={lead._id}
                   className="flex flex-col gap-2 rounded-xl border border-amber-500/20 bg-slate-950/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.035, 0.18) }}
+                  layout
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-white">{lead.name}</p>
@@ -141,22 +158,26 @@ function FollowUpNotifier() {
                       <p className="mt-1 text-xs text-slate-400">Phone: {lead.phone}</p>
                     )}
                   </div>
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => dismissFollowUp(lead._id)}
                     disabled={dismissingId === lead._id}
                     className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-500/30 px-4 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    whileHover={dismissingId === lead._id ? undefined : { y: -1 }}
+                    whileTap={dismissingId === lead._id ? undefined : { scale: 0.97 }}
                   >
                     <X className="h-3.5 w-3.5" />
                     {dismissingId === lead._id ? "Dismissing..." : "Dismiss"}
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               ))}
             </div>
           </div>
         </div>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

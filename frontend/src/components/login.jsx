@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { Activity, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiUrl } from "../config/api.js";
 
 const API_URL = apiUrl("/api/auth/login");
+const buttonTap = { scale: 0.97 };
+const buttonHover = { y: -1 };
  
 function Login() {
   const { login } = useAuth();
@@ -57,7 +60,12 @@ function Login() {
           <div className="absolute -left-16 top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
           <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-emerald-300/20 blur-3xl" />
  
-          <div className="relative z-10 flex flex-1 flex-col justify-center px-12 xl:px-16">
+          <motion.div
+            className="relative z-10 flex flex-1 flex-col justify-center px-12 xl:px-16"
+            initial={{ opacity: 0, x: -18 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+          >
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-100">
               CRM Platform
             </p>
@@ -78,9 +86,12 @@ function Login() {
                 const Icon = item.icon;
  
                 return (
-                  <div
+                  <motion.div
                     className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 backdrop-blur-sm"
                     key={item.label}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: 0.12 }}
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-emerald-50">
                       <Icon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
@@ -88,11 +99,11 @@ function Login() {
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-emerald-100">
                       {item.label}
                     </p>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
  
           <p className="relative z-10 px-12 pb-10 text-sm text-emerald-100/80 xl:px-16">
             Professional lead management for growing teams.
@@ -100,8 +111,19 @@ function Login() {
         </aside>
  
         <main className="flex items-center justify-center px-5 py-10 sm:px-8">
-          <div className="w-full max-w-md">
-            <div className="mb-8 lg:hidden">
+          <motion.div
+            className="w-full max-w-md"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+          >
+            <motion.div
+              className="mb-8 lg:hidden"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.08 }}
+            >
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
                 CRM Platform
               </p>
@@ -111,9 +133,14 @@ function Login() {
               <p className="mt-2 text-slate-400">
                 Sign in to access your lead dashboard.
               </p>
-            </div>
+            </motion.div>
  
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur sm:p-8">
+            <motion.div
+              className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur sm:p-8"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.24, delay: 0.08, ease: "easeOut" }}
+            >
               <div className="hidden lg:block">
                 <h2 className="text-2xl font-bold tracking-tight text-white">
                   Sign in
@@ -123,11 +150,19 @@ function Login() {
                 </p>
               </div>
  
-              {error && (
-                <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">
-                  {error}
-                </div>
-              )}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
  
               <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
                 <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
@@ -157,30 +192,33 @@ function Login() {
                       autoComplete="current-password"
                       required
                     />
-                    <button
+                    <motion.button
                       className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-slate-400 transition hover:text-emerald-400"
                       type="button"
                       onClick={() => setShowPassword((current) => !current)}
+                      whileTap={buttonTap}
                     >
                       {showPassword ? "Hide" : "Show"}
-                    </button>
+                    </motion.button>
                   </div>
                 </label>
  
-                <button
+                <motion.button
                   className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-500 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 disabled:cursor-not-allowed disabled:bg-emerald-500/50"
                   type="submit"
                   disabled={submitting}
+                  whileHover={submitting ? undefined : buttonHover}
+                  whileTap={submitting ? undefined : buttonTap}
                 >
                   {submitting ? "Signing in..." : "Sign in"}
-                </button>
+                </motion.button>
               </form>
  
               <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
                 New accounts are created by an administrator from the Manage Users page.
               </p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </main>
       </div>
     </div>
