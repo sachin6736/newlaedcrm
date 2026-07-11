@@ -8,7 +8,7 @@ import ShowLeads from "./components/ShowLeads.jsx";
 import CreateLead from "./components/CreateLead.jsx";
 import CreateUser from "./components/CreateUser.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
-import NewLeadNotifier from "./Components/NewLeadNotifier.jsx";
+import NewLeadNotifier from "./components/NewLeadNotifier.jsx";
 
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
