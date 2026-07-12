@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Activity, ShieldCheck, Users } from "lucide-react";
+import { Activity, Moon, ShieldCheck, Sun, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme } from "../context/useTheme.js";
 import { apiUrl } from "../config/api.js";
 
 const API_URL = apiUrl("/api/auth/login");
@@ -11,6 +12,7 @@ const buttonHover = { y: -1 };
  
 function Login() {
   const { login } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -110,7 +112,18 @@ function Login() {
           </p>
         </aside>
  
-        <main className="flex items-center justify-center px-5 py-10 sm:px-8">
+        <main className="relative flex items-center justify-center px-5 py-10 sm:px-8">
+          <motion.button
+            className="absolute right-5 top-5 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-700 text-slate-300 transition hover:border-slate-600 hover:bg-slate-900 sm:right-8 sm:top-8"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? "Switch to day mode" : "Switch to night mode"}
+            title={isDark ? "Day mode" : "Night mode"}
+            whileHover={buttonHover}
+            whileTap={buttonTap}
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </motion.button>
           <motion.div
             className="w-full max-w-md"
             initial={{ opacity: 0, y: 18 }}

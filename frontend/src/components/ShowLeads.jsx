@@ -9,7 +9,6 @@ import {
   ChevronUp,
   ClipboardList,
   Filter,
-  Pencil,
   PlusCircle,
   Search,
   ShoppingBag,
@@ -36,7 +35,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import ConfirmModal from "./ConfirmModal.jsx";
 
 const PAGE_SIZE = 10;
-const NOTE_PREVIEW_LENGTH = 15;
+const NOTE_PREVIEW_LENGTH = 6;
 
 const YEAR_OPTIONS = getYearOptions();
 const MotionLink = motion.create(Link);
@@ -107,7 +106,7 @@ function getDefaultFollowUpDatetime() {
 }
 
 function isFollowUpDue(lead) {
-  if (!lead.followUpAt || lead.followUpRemindedAt) {
+  if (!lead.followUpAt) {
     return false;
   }
 
@@ -143,7 +142,6 @@ function ShowLeads() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [refreshCounter, setRefreshCounter] = useState(0);
 
-  const [editingLeadId, setEditingLeadId] = useState(null);
   const [editNote, setEditNote] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [updatingDispositionId, setUpdatingDispositionId] = useState(null);
@@ -286,31 +284,26 @@ function ShowLeads() {
     };
   }, [authHeaders, logout, navigate, page, yearFilter, monthFilter, dayFilter, dispositionFilter, appliedSearch, refreshCounter]);
 
-  const startEditingNote = (lead) => {
-    setEditingLeadId(lead._id);
-    setEditNote(lead.notes || "");
-    setError("");
-  };
-
   const cancelEditingNote = () => {
-    setEditingLeadId(null);
     setEditNote("");
   };
 
   const openNoteViewer = (lead) => {
-    if (!isNoteTruncated(lead.notes)) {
-      return;
-    }
-
     setViewingNote({
       leadId: lead._id,
       leadName: lead.name,
-      notes: lead.notes,
+      notes: lead.notes || "",
     });
+    setEditNote(lead.notes || "");
   };
 
   const closeNoteViewer = () => {
+    if (isUpdating) {
+      return;
+    }
+
     setViewingNote(null);
+    setEditNote("");
   };
 
   const requestDispositionChange = (lead, nextDisposition) => {
@@ -591,7 +584,10 @@ function ShowLeads() {
         )
       );
 
-      cancelEditingNote();
+      setViewingNote((current) =>
+        current?.leadId === leadId ? { ...current, notes: result.data.notes } : current
+      );
+      setSuccess("Lead note was saved.");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -669,30 +665,12 @@ function ShowLeads() {
       title="Created Leads"
       subtitle="Review customer enquiries, track dispositions, and manage your sales pipeline."
     >
-      <motion.div
-        className="grid gap-3 sm:grid-cols-3"
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: {},
-          show: { transition: { staggerChildren: 0.08 } },
-        }}
-      >
-        <StatCard
-          icon={ClipboardList}
-          label={hasActiveFilters ? "Filtered leads" : "Total leads"}
-          value={leadStats.total}
-        />
-        <StatCard icon={Sparkles} label="Quoted" value={leadStats.quoted} />
-        <StatCard icon={ShoppingBag} label="Ordered" value={leadStats.ordered} />
-      </motion.div>
-
       <AnimatePresence mode="popLayout">
         {error && (
           <motion.div
             key="lead-error"
             {...fadeInUp}
-            className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+            className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
           >
             {error}
           </motion.div>
@@ -702,7 +680,7 @@ function ShowLeads() {
           <motion.div
             key="lead-success"
             {...fadeInUp}
-            className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300"
+            className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300"
           >
             {success}
           </motion.div>
@@ -713,16 +691,25 @@ function ShowLeads() {
         {...fadeInUp}
         className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur"
       >
-        <div className="border-b border-slate-800 px-5 py-5 sm:px-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-white">Lead directory</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                {isAdmin
-                  ? "View every lead and who it is assigned to across your team."
-                  : "All team leads are listed below for quick review and follow-up."}
-              </p>
-            </div>
+        <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <motion.div
+              className="grid gap-2 sm:grid-cols-3 xl:min-w-[34rem]"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.05 } },
+              }}
+            >
+              <StatCard
+                icon={ClipboardList}
+                label={hasActiveFilters ? "Filtered leads" : "Total leads"}
+                value={leadStats.total}
+              />
+              <StatCard icon={Sparkles} label="Quoted" value={leadStats.quoted} />
+              <StatCard icon={ShoppingBag} label="Ordered" value={leadStats.ordered} />
+            </motion.div>
             <div className="flex flex-wrap items-center gap-3">
               <motion.button
                 type="button"
@@ -904,16 +891,6 @@ function ShowLeads() {
           </div>
         </div>
 
-        {!loading && leads.length > 0 && (
-          <PaginationControls
-            className="border-b border-slate-800 px-5 py-4 sm:px-6"
-            pageSummary={pageSummary}
-            pagination={pagination}
-            onNewer={() => goToPage(page - 1)}
-            onOlder={() => goToPage(page + 1)}
-          />
-        )}
-
         <AnimatePresence mode="wait">
           {loading ? (
           <LeadTableLoading key="lead-table-loading" isAdmin={isAdmin} />
@@ -968,8 +945,8 @@ function ShowLeads() {
                       "Year",
                       "Part",
                       "Disposition",
-                      "Follow-up",
                       "Notes",
+                      "",
                     ].map((heading) => (
                       <th
                         className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500"
@@ -991,14 +968,8 @@ function ShowLeads() {
                         !isAdmin &&
                         String(getAssignedUserId(lead)) === String(user?.id)
                       }
-                      editingLeadId={editingLeadId}
-                      editNote={editNote}
                       isUpdating={isUpdating}
                       updatingDispositionId={updatingDispositionId}
-                      onEditNoteChange={setEditNote}
-                      onStartEditingNote={startEditingNote}
-                      onCancelEditingNote={cancelEditingNote}
-                      onSaveNote={saveNote}
                       onRequestDispositionChange={requestDispositionChange}
                       onViewNote={openNoteViewer}
                       onOpenFollowUp={openFollowUpModal}
@@ -1057,8 +1028,12 @@ function ShowLeads() {
       <AnimatePresence>
         {viewingNote && (
           <NotesViewModal
+            leadId={viewingNote.leadId}
             leadName={viewingNote.leadName}
-            notes={viewingNote.notes}
+            editNote={editNote}
+            isSaving={isUpdating}
+            onEditNoteChange={setEditNote}
+            onSaveNote={saveNote}
             onClose={closeNoteViewer}
           />
         )}
@@ -1092,8 +1067,8 @@ function LeadTableLoading({ isAdmin }) {
     "Year",
     "Part",
     "Disposition",
-    "Follow-up",
     "Notes",
+    "",
   ];
 
   return (
@@ -1147,22 +1122,27 @@ function LeadTableRow({
   index,
   isAdmin,
   isOwnLead,
-  editingLeadId,
-  editNote,
-  isUpdating,
   updatingDispositionId,
-  onEditNoteChange,
-  onStartEditingNote,
-  onCancelEditingNote,
-  onSaveNote,
   onRequestDispositionChange,
   onViewNote,
   onOpenFollowUp,
 }) {
   const followUpDue = isFollowUpDue(lead);
+  const followUpTitle = lead.followUpAt
+    ? `${followUpDue ? "Follow-up due now" : "Edit follow-up"}: ${formatFollowUpDate(
+        lead.followUpAt
+      )}${lead.followUpNote ? ` - ${lead.followUpNote}` : ""}`
+    : "Schedule follow-up";
+  const notePreview = lead.notes ? truncateNote(lead.notes) : "No notes";
+  const noteTitle = lead.notes ? "Click to enlarge or edit note" : "Click to add a note";
   const rowClassName = followUpDue
     ? "bg-amber-500/15 transition hover:bg-amber-500/25 ring-1 ring-inset ring-amber-500/40"
     : "transition hover:bg-slate-800/40";
+  const followUpButtonClass = followUpDue
+    ? "border-red-500 bg-red-500 text-white shadow-lg shadow-red-500/25 hover:bg-red-400 hover:text-white"
+    : lead.followUpAt
+      ? "border-emerald-500 bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400"
+      : "border-slate-700 text-slate-400 hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300";
 
   return (
     <motion.tr
@@ -1202,7 +1182,7 @@ function LeadTableRow({
       </td>
       <td className="px-4 py-3">
         <select
-          className="min-w-[10rem] rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-w-[10rem] rounded-full border border-emerald-500/40 bg-slate-950 px-3 py-1.5 text-xs font-bold text-white outline-none transition hover:border-emerald-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
           value={lead.disposition}
           onChange={(event) => onRequestDispositionChange(lead, event.target.value)}
           disabled={updatingDispositionId === lead._id}
@@ -1215,109 +1195,33 @@ function LeadTableRow({
           ))}
         </select>
       </td>
-      <td className="min-w-[11rem] px-4 py-3 text-sm text-slate-300">
-        {lead.followUpAt ? (
-          <div>
-            <p className={`font-semibold ${followUpDue ? "text-amber-300" : "text-slate-200"}`}>
-              {formatFollowUpDate(lead.followUpAt)}
-            </p>
-            {lead.followUpNote && (
-              <p className="mt-1 line-clamp-2 text-xs text-slate-400">{lead.followUpNote}</p>
-            )}
-            {followUpDue && (
-              <p className="mt-1 text-xs font-bold uppercase tracking-wide text-amber-300">
-                Due now
-              </p>
-            )}
-          </div>
-        ) : (
-          <span className="text-slate-500">Not scheduled</span>
-        )}
+      <td className="w-36 max-w-[9rem] px-4 py-3 text-sm text-slate-400">
+        <motion.button
+          type="button"
+          onClick={() => onViewNote(lead)}
+          className="block w-full truncate text-left font-medium text-slate-300 transition hover:text-emerald-300"
+          aria-label={`Open note for ${lead.name}`}
+          title={noteTitle}
+          whileTap={buttonTap}
+        >
+          {notePreview}
+          {lead.notes && isNoteTruncated(lead.notes) && (
+            <span className="text-emerald-400">...</span>
+          )}
+        </motion.button>
+      </td>
+      <td className="px-4 py-3">
         <motion.button
           type="button"
           onClick={() => onOpenFollowUp(lead)}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-300 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition ${followUpButtonClass}`}
+          aria-label={followUpTitle}
+          title={followUpTitle}
           whileHover={buttonHover}
           whileTap={buttonTap}
         >
-          <Bell className="h-3.5 w-3.5" />
-          {lead.followUpAt ? "Edit" : "Schedule"}
+          <Bell className="h-4 w-4" />
         </motion.button>
-      </td>
-      <td className="w-36 max-w-[9rem] px-4 py-3 text-sm text-slate-400">
-        {editingLeadId === lead._id ? (
-          <div className="flex min-w-[12rem] flex-col gap-2">
-            <textarea
-              className="min-h-[60px] w-full resize-y rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-              value={editNote}
-              onChange={(event) => onEditNoteChange(event.target.value)}
-              placeholder="Add a note..."
-              disabled={isUpdating}
-              rows={2}
-            />
-            <div className="flex items-center gap-2">
-              <motion.button
-                type="button"
-                onClick={() => onSaveNote(lead._id)}
-                disabled={isUpdating}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-                whileHover={isUpdating ? undefined : buttonHover}
-                whileTap={isUpdating ? undefined : buttonTap}
-              >
-                {isUpdating ? "Saving..." : "Save"}
-              </motion.button>
-              <motion.button
-                type="button"
-                onClick={onCancelEditingNote}
-                disabled={isUpdating}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                whileHover={isUpdating ? undefined : buttonHover}
-                whileTap={isUpdating ? undefined : buttonTap}
-              >
-                Cancel
-              </motion.button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              {lead.notes ? (
-                isNoteTruncated(lead.notes) ? (
-                  <motion.button
-                    type="button"
-                    onClick={() => onViewNote(lead)}
-                    className="group w-full text-left"
-                    aria-label={`View full note for ${lead.name}`}
-                    whileTap={buttonTap}
-                  >
-                    <span className="block truncate font-medium text-slate-300">
-                      {truncateNote(lead.notes)}
-                      <span className="text-emerald-400">…</span>
-                    </span>
-                    <span className="mt-1 block text-xs font-semibold text-emerald-400/80 transition group-hover:text-emerald-300">
-                      View full note
-                    </span>
-                  </motion.button>
-                ) : (
-                  <span className="block truncate text-slate-300">{lead.notes}</span>
-                )
-              ) : (
-                <span className="block text-slate-500">No notes</span>
-              )}
-            </div>
-            <motion.button
-              type="button"
-              onClick={() => onStartEditingNote(lead)}
-              className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-700 text-slate-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
-              title="Edit note"
-              aria-label="Edit note"
-              whileHover={buttonHover}
-              whileTap={buttonTap}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </motion.button>
-          </div>
-        )}
       </td>
     </motion.tr>
   );
@@ -1357,10 +1261,18 @@ function PaginationControls({ className, pageSummary, pagination, onNewer, onOld
     </div>
   );
 }
-function NotesViewModal({ leadName, notes, onClose }) {
+function NotesViewModal({
+  leadId,
+  leadName,
+  editNote,
+  isSaving,
+  onEditNoteChange,
+  onSaveNote,
+  onClose,
+}) {
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isSaving) {
         onClose();
       }
     };
@@ -1370,7 +1282,7 @@ function NotesViewModal({ leadName, notes, onClose }) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [isSaving, onClose]);
 
   return (
     <motion.div
@@ -1415,21 +1327,39 @@ function NotesViewModal({ leadName, notes, onClose }) {
           </motion.button>
         </div>
 
-        <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-6 py-5">
-          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-300">
-            {notes}
-          </p>
+        <div className="px-6 py-5">
+          <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
+            Note
+            <textarea
+              className="min-h-[12rem] resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm leading-relaxed text-white outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              value={editNote}
+              onChange={(event) => onEditNoteChange(event.target.value)}
+              placeholder="Add notes for this lead..."
+              disabled={isSaving}
+            />
+          </label>
         </div>
 
-        <div className="flex justify-end border-t border-slate-800 px-6 py-4">
+        <div className="flex flex-col gap-3 border-t border-slate-800 px-6 py-4 sm:flex-row sm:justify-end">
           <motion.button
             type="button"
             onClick={onClose}
+            disabled={isSaving}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:bg-slate-800"
-            whileHover={buttonHover}
-            whileTap={buttonTap}
+            whileHover={isSaving ? undefined : buttonHover}
+            whileTap={isSaving ? undefined : buttonTap}
           >
             Close
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => onSaveNote(leadId)}
+            disabled={isSaving}
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            whileHover={isSaving ? undefined : buttonHover}
+            whileTap={isSaving ? undefined : buttonTap}
+          >
+            {isSaving ? "Saving..." : "Save note"}
           </motion.button>
         </div>
       </motion.div>
@@ -1468,22 +1398,10 @@ function FollowUpModal({ lead, form, isSaving, onChange, onSave, onClear, onClos
         className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/30"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="followup-modal-title"
+        aria-label="Follow-up details"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
-            <Bell className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-lg font-bold text-white" id="followup-modal-title">
-              Schedule follow-up
-            </h3>
-            <p className="mt-1 truncate text-sm text-slate-400">{lead.name}</p>
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-4">
+        <div className="space-y-4">
           <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
             Date & time
             <input
@@ -1499,23 +1417,17 @@ function FollowUpModal({ lead, form, isSaving, onChange, onSave, onClear, onClos
           </label>
 
           <label className="flex flex-col gap-2 text-sm font-semibold text-slate-300">
-            Reminder note
+            Note
             <textarea
               className="min-h-[88px] resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
               value={form.note}
               onChange={(event) =>
                 onChange((current) => ({ ...current, note: event.target.value }))
               }
-              placeholder="e.g. Call back about pricing"
               disabled={isSaving}
               rows={3}
             />
           </label>
-
-          <p className="text-xs leading-relaxed text-slate-500">
-            The assigned user will be reminded at this time with an in-app alert and browser
-            notification.
-          </p>
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
