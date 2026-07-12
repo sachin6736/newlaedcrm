@@ -2,6 +2,7 @@
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeProvider.jsx";
 import { AnimatePresence } from "motion/react";
+import { Toaster } from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import Login from "./components/login.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -9,6 +10,7 @@ import ShowLeads from "./components/ShowLeads.jsx";
 import CreateLead from "./components/CreateLead.jsx";
 import CreateUser from "./components/CreateUser.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
+import NewLeadNotifier from "./components/NewLeadNotifier.jsx";
 
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -74,6 +76,8 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <Toaster />
+          <NewLeadNotifier />
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
