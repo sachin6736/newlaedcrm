@@ -15,6 +15,7 @@ export const createExternalLead = async (req, res) => {
   try {
     const {
       name: bodyName,
+      clientName,
       fullName,
       full_name,
       email,
@@ -32,7 +33,7 @@ export const createExternalLead = async (req, res) => {
       source = "facebook",
     } = req.body;
 
-    const name = bodyName || fullName || full_name;
+    const name = bodyName || clientName || fullName || full_name;
     const phone = bodyPhone || phoneNumber || phone_number;
     const zip = bodyZip || zipCode || zip_code || postal_code;
     const partRequested = bodyPartRequested || part_requested;

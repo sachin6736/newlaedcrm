@@ -163,7 +163,8 @@ export const getLeads = async (req, res) => {
 export const createLead = async (req, res) => {
   try {
     const {
-      name,
+      name: bodyName,
+      clientName,
       email,
       phone,
       zip,
@@ -173,6 +174,7 @@ export const createLead = async (req, res) => {
       source = "website",
     } = req.body;
 
+    const name = bodyName || clientName;
     const { yearMakeModel, year, make, model } = normalizeVehicleFields(req.body);
     const isAuthenticatedRequest = Boolean(req.user);
     const normalizedSource = EXTERNAL_SOURCES.includes(source) ? source : "website";
