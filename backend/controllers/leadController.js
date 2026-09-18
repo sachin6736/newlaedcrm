@@ -1,4 +1,4 @@
-﻿import Lead from "../models/Lead.js";
+import Lead from "../models/Lead.js";
 import { getNextAssignee, resolveAssignmentForCreator } from "../utils/assignLead.js";
 import { normalizeVehicleFields } from "../utils/vehicleFields.js";
 import { emitLeadCreated } from "../utils/leadEvents.js";
@@ -166,7 +166,8 @@ export const createLead = async (req, res) => {
       name: bodyName,
       clientName,
       email,
-      phone,
+      phone: bodyPhone,
+      phoneNumber,
       zip,
       partRequested,
       disposition = "Quoted",
@@ -175,6 +176,7 @@ export const createLead = async (req, res) => {
     } = req.body;
 
     const name = bodyName || clientName;
+    const phone = bodyPhone || phoneNumber;
     const { yearMakeModel, year, make, model } = normalizeVehicleFields(req.body);
     const isAuthenticatedRequest = Boolean(req.user);
     const normalizedSource = EXTERNAL_SOURCES.includes(source) ? source : "website";
@@ -347,3 +349,4 @@ export const dismissFollowUp = async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
