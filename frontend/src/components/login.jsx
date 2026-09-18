@@ -186,7 +186,6 @@ function Login() {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    placeholder="you@company.com"
                     autoComplete="email"
                     required
                   />
@@ -201,7 +200,6 @@ function Login() {
                       name="password"
                       value={form.password}
                       onChange={handleChange}
-                      placeholder="Enter your password"
                       autoComplete="current-password"
                       required
                     />
